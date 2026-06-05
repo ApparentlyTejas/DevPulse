@@ -16,7 +16,9 @@ ORGS = "/api/v1/organizations"
 # ---------------------------------------------------------------------------
 
 
-async def _setup(client: AsyncClient, email: str, org_slug: str, svc_slug: str) -> tuple[str, str, str]:
+async def _setup(
+    client: AsyncClient, email: str, org_slug: str, svc_slug: str
+) -> tuple[str, str, str]:
     reg = await client.post(AUTH + "/register", json={"email": email, "password": "password99"})
     token = reg.json()["access_token"]
     hdrs = {"Authorization": f"Bearer {token}"}
@@ -58,7 +60,9 @@ _EVENT_PAYLOAD = {
 
 
 async def test_create_alert_rule_returns_201(client: AsyncClient) -> None:
-    token, org_id, svc_id = await _setup(client, "alerts-rule-create@example.com", "alerts-rule-org", "alerts-rule-svc")
+    token, org_id, svc_id = await _setup(
+        client, "alerts-rule-create@example.com", "alerts-rule-org", "alerts-rule-svc"
+    )
     hdrs = {"Authorization": f"Bearer {token}"}
 
     resp = await client.post(
@@ -74,12 +78,16 @@ async def test_create_alert_rule_returns_201(client: AsyncClient) -> None:
 
 
 async def test_list_alert_rules(client: AsyncClient) -> None:
-    token, org_id, svc_id = await _setup(client, "alerts-rule-list@example.com", "alerts-rule-list-org", "alerts-rule-list-svc")
+    token, org_id, svc_id = await _setup(
+        client, "alerts-rule-list@example.com", "alerts-rule-list-org", "alerts-rule-list-svc"
+    )
     hdrs = {"Authorization": f"Bearer {token}"}
     base = _alerts_url(org_id, svc_id) + "/rules"
 
     await client.post(base, json=_RULE_PAYLOAD, headers=hdrs)
-    await client.post(base, json={**_RULE_PAYLOAD, "name": "Low uptime", "metric_name": "uptime"}, headers=hdrs)
+    await client.post(
+        base, json={**_RULE_PAYLOAD, "name": "Low uptime", "metric_name": "uptime"}, headers=hdrs
+    )
 
     resp = await client.get(base, headers=hdrs)
     assert resp.status_code == 200
@@ -87,7 +95,9 @@ async def test_list_alert_rules(client: AsyncClient) -> None:
 
 
 async def test_update_alert_rule(client: AsyncClient) -> None:
-    token, org_id, svc_id = await _setup(client, "alerts-rule-update@example.com", "alerts-rule-update-org", "alerts-rule-update-svc")
+    token, org_id, svc_id = await _setup(
+        client, "alerts-rule-update@example.com", "alerts-rule-update-org", "alerts-rule-update-svc"
+    )
     hdrs = {"Authorization": f"Bearer {token}"}
     base = _alerts_url(org_id, svc_id) + "/rules"
 
@@ -105,7 +115,9 @@ async def test_update_alert_rule(client: AsyncClient) -> None:
 
 
 async def test_delete_alert_rule(client: AsyncClient) -> None:
-    token, org_id, svc_id = await _setup(client, "alerts-rule-delete@example.com", "alerts-rule-delete-org", "alerts-rule-delete-svc")
+    token, org_id, svc_id = await _setup(
+        client, "alerts-rule-delete@example.com", "alerts-rule-delete-org", "alerts-rule-delete-svc"
+    )
     hdrs = {"Authorization": f"Bearer {token}"}
     base = _alerts_url(org_id, svc_id) + "/rules"
 
@@ -124,7 +136,9 @@ async def test_delete_alert_rule(client: AsyncClient) -> None:
 
 
 async def test_create_alert_event_returns_201(client: AsyncClient) -> None:
-    token, org_id, svc_id = await _setup(client, "alerts-event-create@example.com", "alerts-event-org", "alerts-event-svc")
+    token, org_id, svc_id = await _setup(
+        client, "alerts-event-create@example.com", "alerts-event-org", "alerts-event-svc"
+    )
     hdrs = {"Authorization": f"Bearer {token}"}
 
     resp = await client.post(
@@ -140,7 +154,9 @@ async def test_create_alert_event_returns_201(client: AsyncClient) -> None:
 
 
 async def test_acknowledge_alert_event(client: AsyncClient) -> None:
-    token, org_id, svc_id = await _setup(client, "alerts-ack@example.com", "alerts-ack-org", "alerts-ack-svc")
+    token, org_id, svc_id = await _setup(
+        client, "alerts-ack@example.com", "alerts-ack-org", "alerts-ack-svc"
+    )
     hdrs = {"Authorization": f"Bearer {token}"}
     events_url = _alerts_url(org_id, svc_id) + "/events"
 
@@ -158,12 +174,16 @@ async def test_acknowledge_alert_event(client: AsyncClient) -> None:
 
 
 async def test_resolve_alert_event(client: AsyncClient) -> None:
-    token, org_id, svc_id = await _setup(client, "alerts-resolve@example.com", "alerts-resolve-org", "alerts-resolve-svc")
+    token, org_id, svc_id = await _setup(
+        client, "alerts-resolve@example.com", "alerts-resolve-org", "alerts-resolve-svc"
+    )
     hdrs = {"Authorization": f"Bearer {token}"}
     events_url = _alerts_url(org_id, svc_id) + "/events"
 
     event_id = (await client.post(events_url, json=_EVENT_PAYLOAD, headers=hdrs)).json()["id"]
-    await client.patch(f"{events_url}/{event_id}/status", json={"alert_status": "acknowledged"}, headers=hdrs)
+    await client.patch(
+        f"{events_url}/{event_id}/status", json={"alert_status": "acknowledged"}, headers=hdrs
+    )
 
     resp = await client.patch(
         f"{events_url}/{event_id}/status",
@@ -177,7 +197,9 @@ async def test_resolve_alert_event(client: AsyncClient) -> None:
 
 
 async def test_invalid_status_transition_returns_422(client: AsyncClient) -> None:
-    token, org_id, svc_id = await _setup(client, "alerts-badtrans@example.com", "alerts-badtrans-org", "alerts-badtrans-svc")
+    token, org_id, svc_id = await _setup(
+        client, "alerts-badtrans@example.com", "alerts-badtrans-org", "alerts-badtrans-svc"
+    )
     hdrs = {"Authorization": f"Bearer {token}"}
     events_url = _alerts_url(org_id, svc_id) + "/events"
 
@@ -185,7 +207,9 @@ async def test_invalid_status_transition_returns_422(client: AsyncClient) -> Non
 
     # Cannot go directly from open → resolved without acknowledging (wait, actually that IS valid)
     # Let's resolve it first and then try to re-open it (which is invalid).
-    await client.patch(f"{events_url}/{event_id}/status", json={"alert_status": "resolved"}, headers=hdrs)
+    await client.patch(
+        f"{events_url}/{event_id}/status", json={"alert_status": "resolved"}, headers=hdrs
+    )
     resp = await client.patch(
         f"{events_url}/{event_id}/status",
         json={"alert_status": "acknowledged"},

@@ -53,7 +53,7 @@ make typecheck
 
 | Phase   | Area                              | Status |
 | ------- | --------------------------------- | ------ |
-| Phase 1 | Core backend (auth → incidents)   | auth + orgs done |
+| Phase 1 | Core backend (auth → incidents)   | **Done** (auth, orgs, services, metrics, alerts, incidents) |
 | Phase 2 | AI layer (Claude triage, MCP, RAG)| —      |
 | Phase 3 | Frontend                          | —      |
 | Phase 4 | Production infrastructure (AWS)   | —      |

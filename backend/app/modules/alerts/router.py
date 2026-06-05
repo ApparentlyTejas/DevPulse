@@ -60,9 +60,13 @@ async def create_rule(
             is_enabled=req.is_enabled,
         )
     except OrgNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
+        ) from exc
     except ServiceNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Service not found"
+        ) from exc
     return AlertRuleOut.model_validate(rule)
 
 
@@ -73,9 +77,13 @@ async def list_rules(
     try:
         rules = await alerts_service.list_rules(db, org_id, service_id, current_user.id)
     except OrgNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
+        ) from exc
     except ServiceNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Service not found"
+        ) from exc
     return [AlertRuleOut.model_validate(r) for r in rules]
 
 
@@ -86,11 +94,17 @@ async def get_rule(
     try:
         rule = await alerts_service.get_rule(db, org_id, service_id, rule_id, current_user.id)
     except OrgNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
+        ) from exc
     except ServiceNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Service not found"
+        ) from exc
     except AlertRuleNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found"
+        ) from exc
     return AlertRuleOut.model_validate(rule)
 
 
@@ -117,11 +131,17 @@ async def update_rule(
             is_enabled=req.is_enabled,
         )
     except OrgNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
+        ) from exc
     except ServiceNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Service not found"
+        ) from exc
     except AlertRuleNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found"
+        ) from exc
     return AlertRuleOut.model_validate(rule)
 
 
@@ -132,11 +152,17 @@ async def delete_rule(
     try:
         await alerts_service.delete_rule(db, org_id, service_id, rule_id, current_user.id)
     except OrgNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
+        ) from exc
     except ServiceNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Service not found"
+        ) from exc
     except AlertRuleNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found"
+        ) from exc
 
 
 # ---------------------------------------------------------------------------
@@ -168,9 +194,13 @@ async def create_event(
             rule_id=req.rule_id,
         )
     except OrgNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
+        ) from exc
     except ServiceNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Service not found"
+        ) from exc
     return AlertEventOut.model_validate(event)
 
 
@@ -181,9 +211,13 @@ async def list_events(
     try:
         events = await alerts_service.list_events(db, org_id, service_id, current_user.id)
     except OrgNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
+        ) from exc
     except ServiceNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Service not found"
+        ) from exc
     return [AlertEventOut.model_validate(e) for e in events]
 
 
@@ -194,11 +228,17 @@ async def get_event(
     try:
         event = await alerts_service.get_event(db, org_id, service_id, event_id, current_user.id)
     except OrgNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
+        ) from exc
     except ServiceNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Service not found"
+        ) from exc
     except AlertEventNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert event not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Alert event not found"
+        ) from exc
     return AlertEventOut.model_validate(event)
 
 
@@ -216,11 +256,17 @@ async def update_event_status(
             db, org_id, service_id, event_id, current_user.id, req.alert_status
         )
     except OrgNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
+        ) from exc
     except ServiceNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Service not found"
+        ) from exc
     except AlertEventNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert event not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Alert event not found"
+        ) from exc
     except InvalidStatusTransitionError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

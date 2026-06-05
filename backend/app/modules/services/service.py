@@ -63,9 +63,7 @@ async def create_service(
         raise OrgNotFoundError
 
     existing = await db.scalar(
-        select(Service)
-        .where(Service.org_id == org_id)
-        .where(Service.slug == slug.lower())
+        select(Service).where(Service.org_id == org_id).where(Service.slug == slug.lower())
     )
     if existing is not None:
         raise SlugAlreadyTakenError(slug)
@@ -88,9 +86,7 @@ async def list_services(db: AsyncSession, org_id: UUID, user_id: UUID) -> list[S
     await _assert_org_membership(db, org_id, user_id)
 
     result = await db.execute(
-        select(Service)
-        .where(Service.org_id == org_id)
-        .order_by(Service.name)
+        select(Service).where(Service.org_id == org_id).order_by(Service.name)
     )
     return list(result.scalars().all())
 
@@ -99,9 +95,7 @@ async def get_service(db: AsyncSession, org_id: UUID, service_id: UUID, user_id:
     await _assert_org_membership(db, org_id, user_id)
 
     service = await db.scalar(
-        select(Service)
-        .where(Service.id == service_id)
-        .where(Service.org_id == org_id)
+        select(Service).where(Service.id == service_id).where(Service.org_id == org_id)
     )
     if service is None:
         raise ServiceNotFoundError
@@ -134,9 +128,7 @@ async def update_service(
     return service
 
 
-async def delete_service(
-    db: AsyncSession, org_id: UUID, service_id: UUID, user_id: UUID
-) -> None:
+async def delete_service(db: AsyncSession, org_id: UUID, service_id: UUID, user_id: UUID) -> None:
     service = await get_service(db, org_id, service_id, user_id)
     await db.delete(service)
     await db.commit()

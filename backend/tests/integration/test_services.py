@@ -61,14 +61,19 @@ async def test_create_service_duplicate_slug_returns_409(client: AsyncClient) ->
     org = await _create_org(client, token, "svc-dup-org")
 
     payload = {"name": "My Service", "slug": "my-service"}
-    await client.post(_svc_url(org["id"]), json=payload, headers={"Authorization": f"Bearer {token}"})
-    resp = await client.post(_svc_url(org["id"]), json=payload, headers={"Authorization": f"Bearer {token}"})
+    await client.post(
+        _svc_url(org["id"]), json=payload, headers={"Authorization": f"Bearer {token}"}
+    )
+    resp = await client.post(
+        _svc_url(org["id"]), json=payload, headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 409
 
 
 async def test_create_service_wrong_org_returns_404(client: AsyncClient) -> None:
     token = await _register(client, "svc-wrongorg@example.com")
     import uuid
+
     resp = await client.post(
         _svc_url(str(uuid.uuid4())),
         json={"name": "Ghost", "slug": "ghost"},
@@ -99,6 +104,7 @@ async def test_get_service_not_found_returns_404(client: AsyncClient) -> None:
     token = await _register(client, "svc-get404@example.com")
     org = await _create_org(client, token, "svc-get404-org")
     import uuid
+
     resp = await client.get(
         f"{_svc_url(org['id'])}/{uuid.uuid4()}",
         headers={"Authorization": f"Bearer {token}"},

@@ -40,9 +40,13 @@ async def create_incident(
             service_id=req.service_id,
         )
     except OrgNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
+        ) from exc
     except ServiceNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Service not found"
+        ) from exc
     return IncidentOut.model_validate(incident)
 
 
@@ -51,9 +55,13 @@ async def list_incidents(
     org_id: UUID, db: DbSession, current_user: CurrentUser
 ) -> list[IncidentOut]:
     try:
-        incidents = await incidents_service.list_incidents(db, org_id=org_id, user_id=current_user.id)
+        incidents = await incidents_service.list_incidents(
+            db, org_id=org_id, user_id=current_user.id
+        )
     except OrgNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
+        ) from exc
     return [IncidentOut.model_validate(i) for i in incidents]
 
 
@@ -64,9 +72,13 @@ async def get_incident(
     try:
         incident = await incidents_service.get_incident(db, org_id, incident_id, current_user.id)
     except OrgNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
+        ) from exc
     except IncidentNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found"
+        ) from exc
     return IncidentOut.model_validate(incident)
 
 
@@ -89,9 +101,13 @@ async def update_incident(
             severity=req.severity,
         )
     except OrgNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
+        ) from exc
     except IncidentNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found"
+        ) from exc
     return IncidentOut.model_validate(incident)
 
 
@@ -108,9 +124,13 @@ async def update_incident_status(
             db, org_id, incident_id, current_user.id, req.incident_status
         )
     except OrgNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
+        ) from exc
     except IncidentNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found"
+        ) from exc
     except InvalidStatusTransitionError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -126,6 +146,10 @@ async def delete_incident(
     try:
         await incidents_service.delete_incident(db, org_id, incident_id, current_user.id)
     except OrgNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
+        ) from exc
     except IncidentNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found"
+        ) from exc

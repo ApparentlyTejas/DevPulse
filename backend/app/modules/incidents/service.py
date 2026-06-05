@@ -75,9 +75,7 @@ async def create_incident(
 
     if service_id is not None:
         service = await db.scalar(
-            select(Service)
-            .where(Service.id == service_id)
-            .where(Service.org_id == org_id)
+            select(Service).where(Service.id == service_id).where(Service.org_id == org_id)
         )
         if service is None:
             raise ServiceNotFoundError
@@ -97,15 +95,11 @@ async def create_incident(
     return incident
 
 
-async def list_incidents(
-    db: AsyncSession, org_id: UUID, user_id: UUID
-) -> list[Incident]:
+async def list_incidents(db: AsyncSession, org_id: UUID, user_id: UUID) -> list[Incident]:
     await _assert_org_membership(db, org_id, user_id)
 
     result = await db.execute(
-        select(Incident)
-        .where(Incident.org_id == org_id)
-        .order_by(Incident.created_at.desc())
+        select(Incident).where(Incident.org_id == org_id).order_by(Incident.created_at.desc())
     )
     return list(result.scalars().all())
 
@@ -116,9 +110,7 @@ async def get_incident(
     await _assert_org_membership(db, org_id, user_id)
 
     incident = await db.scalar(
-        select(Incident)
-        .where(Incident.id == incident_id)
-        .where(Incident.org_id == org_id)
+        select(Incident).where(Incident.id == incident_id).where(Incident.org_id == org_id)
     )
     if incident is None:
         raise IncidentNotFoundError
@@ -171,9 +163,7 @@ async def update_status(
     return incident
 
 
-async def delete_incident(
-    db: AsyncSession, org_id: UUID, incident_id: UUID, user_id: UUID
-) -> None:
+async def delete_incident(db: AsyncSession, org_id: UUID, incident_id: UUID, user_id: UUID) -> None:
     incident = await get_incident(db, org_id, incident_id, user_id)
     await db.delete(incident)
     await db.commit()

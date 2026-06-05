@@ -16,7 +16,9 @@ ORGS = "/api/v1/organizations"
 # ---------------------------------------------------------------------------
 
 
-async def _setup(client: AsyncClient, email: str, org_slug: str, svc_slug: str) -> tuple[str, str, str]:
+async def _setup(
+    client: AsyncClient, email: str, org_slug: str, svc_slug: str
+) -> tuple[str, str, str]:
     """Register user, create org + service. Returns (token, org_id, service_id)."""
     reg = await client.post(AUTH + "/register", json={"email": email, "password": "password99"})
     token = reg.json()["access_token"]
@@ -44,7 +46,9 @@ def _metric_url(org_id: str, svc_id: str) -> str:
 
 
 async def test_ingest_metric_returns_201(client: AsyncClient) -> None:
-    token, org_id, svc_id = await _setup(client, "metrics-ingest@example.com", "metrics-org", "metrics-svc")
+    token, org_id, svc_id = await _setup(
+        client, "metrics-ingest@example.com", "metrics-org", "metrics-svc"
+    )
     hdrs = {"Authorization": f"Bearer {token}"}
 
     resp = await client.post(
@@ -61,8 +65,11 @@ async def test_ingest_metric_returns_201(client: AsyncClient) -> None:
 
 
 async def test_ingest_metric_unknown_service_returns_404(client: AsyncClient) -> None:
-    token, org_id, _ = await _setup(client, "metrics-404@example.com", "metrics-404-org", "metrics-404-svc")
+    token, org_id, _ = await _setup(
+        client, "metrics-404@example.com", "metrics-404-org", "metrics-404-svc"
+    )
     import uuid
+
     resp = await client.post(
         _metric_url(org_id, str(uuid.uuid4())),
         json={"metric_name": "cpu", "value": 1.0},
@@ -77,7 +84,9 @@ async def test_ingest_metric_unknown_service_returns_404(client: AsyncClient) ->
 
 
 async def test_list_metrics_returns_snapshots(client: AsyncClient) -> None:
-    token, org_id, svc_id = await _setup(client, "metrics-list@example.com", "metrics-list-org", "metrics-list-svc")
+    token, org_id, svc_id = await _setup(
+        client, "metrics-list@example.com", "metrics-list-org", "metrics-list-svc"
+    )
     hdrs = {"Authorization": f"Bearer {token}"}
     url = _metric_url(org_id, svc_id)
 
@@ -91,7 +100,9 @@ async def test_list_metrics_returns_snapshots(client: AsyncClient) -> None:
 
 
 async def test_list_metrics_filter_by_name(client: AsyncClient) -> None:
-    token, org_id, svc_id = await _setup(client, "metrics-filter@example.com", "metrics-filter-org", "metrics-filter-svc")
+    token, org_id, svc_id = await _setup(
+        client, "metrics-filter@example.com", "metrics-filter-org", "metrics-filter-svc"
+    )
     hdrs = {"Authorization": f"Bearer {token}"}
     url = _metric_url(org_id, svc_id)
 
@@ -106,7 +117,9 @@ async def test_list_metrics_filter_by_name(client: AsyncClient) -> None:
 
 
 async def test_list_metrics_limit(client: AsyncClient) -> None:
-    token, org_id, svc_id = await _setup(client, "metrics-limit@example.com", "metrics-limit-org", "metrics-limit-svc")
+    token, org_id, svc_id = await _setup(
+        client, "metrics-limit@example.com", "metrics-limit-org", "metrics-limit-svc"
+    )
     hdrs = {"Authorization": f"Bearer {token}"}
     url = _metric_url(org_id, svc_id)
 

@@ -60,9 +60,7 @@ async def _assert_service_in_org(
         raise OrgNotFoundError
 
     service = await db.scalar(
-        select(Service)
-        .where(Service.id == service_id)
-        .where(Service.org_id == org_id)
+        select(Service).where(Service.id == service_id).where(Service.org_id == org_id)
     )
     if service is None:
         raise ServiceNotFoundError

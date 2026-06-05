@@ -49,9 +49,7 @@ async def create_service(
 
 
 @router.get("", response_model=list[ServiceOut])
-async def list_services(
-    org_id: UUID, db: DbSession, current_user: CurrentUser
-) -> list[ServiceOut]:
+async def list_services(org_id: UUID, db: DbSession, current_user: CurrentUser) -> list[ServiceOut]:
     try:
         services = await svc_service.list_services(db, org_id=org_id, user_id=current_user.id)
     except OrgNotFoundError as exc:

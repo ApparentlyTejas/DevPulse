@@ -79,6 +79,7 @@ async def test_create_incident_linked_to_service(client: AsyncClient) -> None:
 async def test_create_incident_unknown_service_returns_404(client: AsyncClient) -> None:
     token, org_id = await _setup(client, "inc-badsvc@example.com", "inc-badsvc-org")
     import uuid
+
     resp = await client.post(
         _inc_url(org_id),
         json={**_INC_PAYLOAD, "service_id": str(uuid.uuid4())},
@@ -108,6 +109,7 @@ async def test_list_incidents(client: AsyncClient) -> None:
 async def test_get_incident_not_found_returns_404(client: AsyncClient) -> None:
     token, org_id = await _setup(client, "inc-get404@example.com", "inc-get404-org")
     import uuid
+
     resp = await client.get(
         f"{_inc_url(org_id)}/{uuid.uuid4()}",
         headers={"Authorization": f"Bearer {token}"},

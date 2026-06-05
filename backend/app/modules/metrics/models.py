@@ -62,7 +62,9 @@ class MetricSnapshot(Base):
     service: Mapped[Service] = relationship(back_populates="metric_snapshots")
 
     __table_args__ = (
-        Index("ix_metric_snapshots_service_metric_time", "service_id", "metric_name", "recorded_at"),
+        Index(
+            "ix_metric_snapshots_service_metric_time", "service_id", "metric_name", "recorded_at"
+        ),
         Index("ix_metric_snapshots_org_id", "org_id"),
     )
 
