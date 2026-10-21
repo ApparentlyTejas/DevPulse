@@ -6,8 +6,8 @@ without triggering side effects at import time.
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,42 +25,58 @@ from app.db.session import build_sessionmaker
 logger = get_logger(__name__)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Application lifespan: startup before yield, shutdown after.
+def _build_lifespan(
+    settings: Settings,
+) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
+    """Build the lifespan context manager bound to a specific `Settings`.
 
-    Startup:
-      - build the async SQLAlchemy engine + sessionmaker
-      - build the async Redis client
-      - stash both on `app.state` for dependencies to find
-    Shutdown:
-      - dispose the engine (closes pooled connections cleanly)
-      - close the Redis client
+    Bug fix: this used to be a module-level `lifespan` function that called
+    `get_settings()` directly, ignoring whatever `Settings` was passed into
+    `create_app(settings=...)`. That broke the documented contract ("passing
+    settings explicitly is useful in tests") — a caller building the app with
+    test settings (e.g. pointed at a testcontainer Postgres/Redis) would still
+    have startup silently connect using the globally cached `get_settings()`
+    env-derived settings instead. Closing over the actual `settings` passed to
+    `create_app` fixes that.
     """
-    settings: Settings = get_settings()
-    logger.info(
-        "app.startup",
-        app_env=settings.app_env,
-        version=__version__,
-        debug=settings.app_debug,
-    )
 
-    # --- DB engine + sessionmaker ---
-    engine = create_engine(settings)
-    sessionmaker = build_sessionmaker(engine)
-    app.state.db_engine = engine
-    app.state.db_sessionmaker = sessionmaker
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        """Application lifespan: startup before yield, shutdown after.
 
-    # --- Redis ---
-    redis_client = create_redis(settings)
-    app.state.redis = redis_client
+        Startup:
+          - build the async SQLAlchemy engine + sessionmaker
+          - build the async Redis client
+          - stash both on `app.state` for dependencies to find
+        Shutdown:
+          - dispose the engine (closes pooled connections cleanly)
+          - close the Redis client
+        """
+        logger.info(
+            "app.startup",
+            app_env=settings.app_env,
+            version=__version__,
+            debug=settings.app_debug,
+        )
 
-    try:
-        yield
-    finally:
-        logger.info("app.shutdown")
-        await redis_client.aclose()
-        await engine.dispose()
+        # --- DB engine + sessionmaker ---
+        engine = create_engine(settings)
+        sessionmaker = build_sessionmaker(engine)
+        app.state.db_engine = engine
+        app.state.db_sessionmaker = sessionmaker
+
+        # --- Redis ---
+        redis_client = create_redis(settings)
+        app.state.redis = redis_client
+
+        try:
+            yield
+        finally:
+            logger.info("app.shutdown")
+            await redis_client.aclose()
+            await engine.dispose()
+
+    return lifespan
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -81,7 +97,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         version=__version__,
         description="AI-powered engineering operations platform.",
         debug=settings.app_debug,
-        lifespan=lifespan,
+        lifespan=_build_lifespan(settings),
         docs_url="/docs",
         redoc_url=None,
         openapi_url=f"{settings.api.v1_prefix}/openapi.json",
