@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import cast
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -59,10 +60,16 @@ def _require_role(membership: OrganizationMembership, minimum: OrgRole) -> None:
 async def _get_membership(
     db: AsyncSession, org_id: UUID, user_id: UUID
 ) -> OrganizationMembership | None:
-    return await db.scalar(
-        select(OrganizationMembership)
-        .where(OrganizationMembership.organization_id == org_id)
-        .where(OrganizationMembership.user_id == user_id)
+    # `AsyncSession.scalar` is typed `Any` without the SQLAlchemy mypy plugin
+    # (not enabled here alongside pydantic's); the cast documents the actual
+    # return type instead of widening the function signature.
+    return cast(
+        "OrganizationMembership | None",
+        await db.scalar(
+            select(OrganizationMembership)
+            .where(OrganizationMembership.organization_id == org_id)
+            .where(OrganizationMembership.user_id == user_id)
+        ),
     )
 
 

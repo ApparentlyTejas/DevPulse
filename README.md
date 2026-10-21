@@ -1,5 +1,7 @@
 # DevPulse
 
+![CI](https://github.com/ApparentlyTejas/DevPulse/actions/workflows/ci.yml/badge.svg)
+
 AI-powered engineering operations platform. Centralizes service monitoring,
 metrics, incident management, and exposes infrastructure to Claude via the
 Model Context Protocol (MCP).
@@ -48,6 +50,29 @@ make test
 make lint
 make typecheck
 ```
+
+### Running lint / type-check / coverage locally (without Docker)
+
+CI (`.github/workflows/ci.yml`) runs ruff, mypy, and the full pytest suite
+with coverage on every push/PR to `main`. You can run the same checks
+locally with [uv](https://docs.astral.sh/uv/), from `backend/`:
+
+```bash
+cd backend
+uv sync --extra dev                 # install runtime + dev dependencies
+
+uv run ruff check .                 # lint
+uv run ruff format --check .        # formatting
+
+uv run mypy app                     # strict type check
+
+uv run pytest --cov=app --cov-report=term-missing --cov-report=html
+# open backend/htmlcov/index.html for the full coverage report
+```
+
+Integration tests spin up ephemeral Postgres/Redis containers via
+[testcontainers](https://testcontainers-python.readthedocs.io/), so Docker
+must be running locally — no other setup or secrets required.
 
 ## Project status
 

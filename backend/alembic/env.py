@@ -23,17 +23,17 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 from app.core.config import get_settings
 from app.db.base import Base
+from app.modules.alerts import models as _alerts_models  # noqa: F401
 
 # -----------------------------------------------------------------------------
 # Import all model modules below so they register against Base.metadata.
 # Each new domain module's models.py gets imported here.
 # -----------------------------------------------------------------------------
 from app.modules.auth import models as _auth_models  # noqa: F401
+from app.modules.incidents import models as _incidents_models  # noqa: F401
+from app.modules.metrics import models as _metrics_models  # noqa: F401
 from app.modules.organizations import models as _org_models  # noqa: F401
 from app.modules.services import models as _services_models  # noqa: F401
-from app.modules.metrics import models as _metrics_models  # noqa: F401
-from app.modules.alerts import models as _alerts_models  # noqa: F401
-from app.modules.incidents import models as _incidents_models  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

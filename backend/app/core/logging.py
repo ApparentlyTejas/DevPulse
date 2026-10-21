@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import Any
+from typing import Any, cast
 
 import structlog
 
@@ -58,4 +58,7 @@ def configure_logging(*, log_level: str = "INFO", json_logs: bool = True) -> Non
 
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
     """Get a structured logger. Use `get_logger(__name__)` from modules."""
-    return structlog.get_logger(name)
+    # structlog's own stubs type `get_logger` as returning `Any` (it's a
+    # proxy resolved at configure-time), so the cast just documents the
+    # contract we rely on everywhere else in this module.
+    return cast("structlog.stdlib.BoundLogger", structlog.get_logger(name))

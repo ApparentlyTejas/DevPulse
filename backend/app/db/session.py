@@ -31,8 +31,11 @@ def build_sessionmaker(engine: object) -> async_sessionmaker[AsyncSession]:
     # The `engine` parameter is typed `object` because typing it as
     # `AsyncEngine` would require importing it here too — keeping this
     # module's import surface minimal makes it easier to mock in tests.
-    return async_sessionmaker(
-        bind=engine,  # type: ignore[arg-type]
+    # That `object` typing means mypy can't match any `async_sessionmaker`
+    # overload, so we suppress and rely on the `-> async_sessionmaker[AsyncSession]`
+    # return annotation (and tests) to catch a genuinely wrong `engine`.
+    return async_sessionmaker(  # type: ignore[call-overload,no-any-return]
+        bind=engine,
         expire_on_commit=False,
         autoflush=False,
         autocommit=False,
