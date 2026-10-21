@@ -199,9 +199,7 @@ async def test_get_rule_unknown_rule_returns_404(client: AsyncClient) -> None:
         client, "alerts-err-rule1@example.com", "alerts-err-rule1", "alerts-err-rule1-svc"
     )
     hdrs = {"Authorization": f"Bearer {token}"}
-    resp = await client.get(
-        _alerts_url(org_id, svc_id) + f"/rules/{uuid.uuid4()}", headers=hdrs
-    )
+    resp = await client.get(_alerts_url(org_id, svc_id) + f"/rules/{uuid.uuid4()}", headers=hdrs)
     assert resp.status_code == 404
 
 
@@ -223,9 +221,7 @@ async def test_delete_rule_unknown_rule_returns_404(client: AsyncClient) -> None
         client, "alerts-err-rule3@example.com", "alerts-err-rule3", "alerts-err-rule3-svc"
     )
     hdrs = {"Authorization": f"Bearer {token}"}
-    resp = await client.delete(
-        _alerts_url(org_id, svc_id) + f"/rules/{uuid.uuid4()}", headers=hdrs
-    )
+    resp = await client.delete(_alerts_url(org_id, svc_id) + f"/rules/{uuid.uuid4()}", headers=hdrs)
     assert resp.status_code == 404
 
 
@@ -234,9 +230,7 @@ async def test_get_event_unknown_event_returns_404(client: AsyncClient) -> None:
         client, "alerts-err-event1@example.com", "alerts-err-event1", "alerts-err-event1-svc"
     )
     hdrs = {"Authorization": f"Bearer {token}"}
-    resp = await client.get(
-        _alerts_url(org_id, svc_id) + f"/events/{uuid.uuid4()}", headers=hdrs
-    )
+    resp = await client.get(_alerts_url(org_id, svc_id) + f"/events/{uuid.uuid4()}", headers=hdrs)
     assert resp.status_code == 404
 
 
