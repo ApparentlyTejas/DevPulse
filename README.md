@@ -79,7 +79,27 @@ must be running locally — no other setup or secrets required.
 | Phase   | Area                              | Status |
 | ------- | --------------------------------- | ------ |
 | Phase 1 | Core backend (auth → incidents)   | **Done** (auth, orgs, services, metrics, alerts, incidents) |
-| Phase 2 | AI layer (Claude triage, MCP, RAG)| —      |
+| Phase 2 | AI layer (Claude triage, MCP, RAG)| **In progress** — Claude-backed incident triage shipped; MCP server + RAG next |
 | Phase 3 | Frontend                          | —      |
 | Phase 4 | Production infrastructure (AWS)   | —      |
 | Phase 5 | Polish, docs, demo                | —      |
+
+## AI incident triage
+
+Every incident can be triaged by Claude on demand:
+
+```
+POST /api/v1/organizations/{org_id}/incidents/{incident_id}/triage
+GET  /api/v1/organizations/{org_id}/incidents/{incident_id}/triage   # history, newest first
+```
+
+Claude gets the incident's title, severity, status, linked service (if any),
+and description, and returns a structured assessment via a forced tool
+call (`summary`, `suggested_severity`, `confidence`) — not freeform text —
+so the response shape is reliable regardless of model phrasing. Each
+triage run is persisted (`incident_triages` table) rather than overwriting
+the last one, so an incident keeps a full triage history as new
+information comes in.
+
+Requires `ANTHROPIC_API_KEY` (see `.env.example`). Backed by
+`app/modules/ai/`.

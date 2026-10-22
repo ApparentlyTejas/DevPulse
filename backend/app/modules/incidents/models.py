@@ -18,6 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
+    from app.modules.ai.models import IncidentTriage
     from app.modules.auth.models import User
     from app.modules.services.models import Service
 
@@ -92,6 +93,15 @@ class Incident(Base, TimestampMixin):
 
     service: Mapped[Service | None] = relationship(back_populates="incidents")
     creator: Mapped[User | None] = relationship("User")
+    # `passive_deletes=True`: deleting an incident relies on the FK's
+    # `ondelete="CASCADE"` at the database level, not on the ORM loading
+    # this collection first (which would require a lazy-load the async
+    # session can't do implicitly mid-flush).
+    triages: Mapped[list[IncidentTriage]] = relationship(
+        back_populates="incident",
+        passive_deletes=True,
+        order_by="IncidentTriage.created_at.desc()",
+    )
 
     __table_args__ = (
         Index("ix_incidents_org_id", "org_id"),

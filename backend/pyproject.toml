@@ -148,6 +148,10 @@ markers = [
 source = ["app"]
 branch = true
 omit = ["app/__init__.py"]
+# Without this, coverage.py can't trace across greenlet switches, so every
+# `await session.execute()`/`commit()` in async SQLAlchemy code is falsely
+# reported as uncovered even when a passing test exercises it.
+concurrency = ["greenlet"]
 
 [tool.coverage.report]
 show_missing = true

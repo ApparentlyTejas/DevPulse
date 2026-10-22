@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app.modules.ai.router import router as ai_router
 from app.modules.alerts.router import router as alerts_router
 from app.modules.auth.router import router as auth_router
 from app.modules.incidents.router import router as incidents_router
@@ -45,4 +46,11 @@ api_router.include_router(
     incidents_router,
     prefix="/organizations/{org_id}/incidents",
     tags=["incidents"],
+)
+
+# AI triage runs against a specific incident.
+api_router.include_router(
+    ai_router,
+    prefix="/organizations/{org_id}/incidents/{incident_id}",
+    tags=["ai"],
 )
