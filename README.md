@@ -104,12 +104,32 @@ information comes in.
 Requires `ANTHROPIC_API_KEY` (see `.env.example`). Backed by
 `app/modules/ai/`.
 
+## AI postmortem generation
+
+```
+POST /api/v1/organizations/{org_id}/incidents/{incident_id}/postmortem
+GET  /api/v1/organizations/{org_id}/incidents/{incident_id}/postmortem   # history, newest first
+```
+
+Claude writes the postmortem strictly from an incident's recorded facts —
+title, severity, status, open/resolve timestamps, linked service, description,
+and its full triage history — and is explicitly instructed not to invent a
+root cause, metric, or system name the data doesn't support. If the facts
+don't establish a root cause, the postmortem says so plainly and names what
+information would be needed, rather than guessing one. Like triage, every
+generation is persisted (`postmortems` table) rather than overwriting the
+last one.
+
+Requires `ANTHROPIC_API_KEY` (see `.env.example`). Backed by
+`app/modules/ai/`.
+
 ## MCP server
 
-`backend/mcp_server/` exposes incidents, services, and triage to any MCP
-client (Claude Desktop, or anything else speaking the protocol) as tools:
-`list_incidents`, `get_incident`, `create_incident`, `update_incident_status`,
-`triage_incident`, `list_incident_triages`, `list_services`.
+`backend/mcp_server/` exposes incidents, services, triage, and postmortem
+generation to any MCP client (Claude Desktop, or anything else speaking the
+protocol) as tools: `list_incidents`, `get_incident`, `create_incident`,
+`update_incident_status`, `triage_incident`, `list_incident_triages`,
+`generate_postmortem`, `list_postmortems`, `list_services`.
 
 It's a separate, lightweight process from the API itself — it holds no
 database connection of its own. Every tool call is a plain HTTP request

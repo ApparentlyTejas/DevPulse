@@ -92,6 +92,24 @@ async def test_list_incident_triages_parses_uuid() -> None:
     client.list_incident_triages.assert_awaited_once_with(INCIDENT_ID)
 
 
+async def test_generate_postmortem_parses_uuid() -> None:
+    client = AsyncMock()
+    client.generate_postmortem.return_value = {"content": "## Summary\n..."}
+    with patch.object(server, "get_client", return_value=client):
+        result = await server.generate_postmortem(str(INCIDENT_ID))
+    assert result == {"content": "## Summary\n..."}
+    client.generate_postmortem.assert_awaited_once_with(INCIDENT_ID)
+
+
+async def test_list_postmortems_parses_uuid() -> None:
+    client = AsyncMock()
+    client.list_postmortems.return_value = [{"id": "1"}]
+    with patch.object(server, "get_client", return_value=client):
+        result = await server.list_postmortems(str(INCIDENT_ID))
+    assert result == [{"id": "1"}]
+    client.list_postmortems.assert_awaited_once_with(INCIDENT_ID)
+
+
 async def test_list_services_calls_client() -> None:
     client = AsyncMock()
     client.list_services.return_value = [{"name": "Checkout"}]

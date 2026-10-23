@@ -1,4 +1,4 @@
-"""Pydantic schemas for the AI triage domain."""
+"""Pydantic schemas for the AI triage and postmortem domains."""
 
 from __future__ import annotations
 
@@ -18,5 +18,15 @@ class IncidentTriageOut(BaseModel):
     summary: str
     suggested_severity: IncidentSeverity | None
     confidence: float
+    model: str
+    created_at: datetime
+
+
+class PostmortemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    incident_id: UUID
+    content: str
     model: str
     created_at: datetime

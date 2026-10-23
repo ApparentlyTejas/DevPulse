@@ -137,6 +137,30 @@ async def test_list_incident_triages() -> None:
     await client.aclose()
 
 
+async def test_generate_postmortem() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path.endswith(f"/incidents/{INCIDENT_ID}/postmortem")
+        return httpx.Response(201, json={"content": "## Summary\n..."})
+
+    client = _client(handler)
+    result = await client.generate_postmortem(INCIDENT_ID)
+    assert result == {"content": "## Summary\n..."}
+    await client.aclose()
+
+
+async def test_list_postmortems() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "GET"
+        assert request.url.path.endswith(f"/incidents/{INCIDENT_ID}/postmortem")
+        return httpx.Response(200, json=[{"id": "1"}])
+
+    client = _client(handler)
+    result = await client.list_postmortems(INCIDENT_ID)
+    assert result == [{"id": "1"}]
+    await client.aclose()
+
+
 async def test_list_services() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == f"/api/v1/organizations/{ORG_ID}/services"

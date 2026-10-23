@@ -18,7 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
-    from app.modules.ai.models import IncidentTriage
+    from app.modules.ai.models import IncidentTriage, Postmortem
     from app.modules.auth.models import User
     from app.modules.services.models import Service
 
@@ -101,6 +101,11 @@ class Incident(Base, TimestampMixin):
         back_populates="incident",
         passive_deletes=True,
         order_by="IncidentTriage.created_at.desc()",
+    )
+    postmortems: Mapped[list[Postmortem]] = relationship(
+        back_populates="incident",
+        passive_deletes=True,
+        order_by="Postmortem.created_at.desc()",
     )
 
     __table_args__ = (

@@ -84,6 +84,24 @@ async def list_incident_triages(incident_id: str) -> list[dict[str, Any]]:
 
 
 @mcp.tool()
+async def generate_postmortem(incident_id: str) -> dict[str, Any]:
+    """Generate a postmortem for an incident, grounded strictly in its
+    recorded facts: title, severity, status, open/resolve timestamps, linked
+    service, description, and the full triage history. Claude is instructed
+    not to invent a root cause, metric, or system name the data doesn't
+    support — if the facts don't establish a root cause, the postmortem says
+    so plainly instead of guessing. Each call adds a new entry to the
+    incident's postmortem history rather than replacing the last one."""
+    return await get_client().generate_postmortem(UUID(incident_id))
+
+
+@mcp.tool()
+async def list_postmortems(incident_id: str) -> list[dict[str, Any]]:
+    """List an incident's past generated postmortems, newest first."""
+    return await get_client().list_postmortems(UUID(incident_id))
+
+
+@mcp.tool()
 async def list_services() -> list[dict[str, Any]]:
     """List every service in the configured organization."""
     return await get_client().list_services()

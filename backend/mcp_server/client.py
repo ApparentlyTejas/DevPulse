@@ -96,6 +96,16 @@ class DevPulseClient:
             "GET", f"{self._org_path}/incidents/{incident_id}/triage"
         )
 
+    async def generate_postmortem(self, incident_id: UUID) -> dict[str, Any]:
+        return await self._request(  # type: ignore[no-any-return]
+            "POST", f"{self._org_path}/incidents/{incident_id}/postmortem"
+        )
+
+    async def list_postmortems(self, incident_id: UUID) -> list[dict[str, Any]]:
+        return await self._request(  # type: ignore[no-any-return]
+            "GET", f"{self._org_path}/incidents/{incident_id}/postmortem"
+        )
+
     # --------------------------------------------------------------- services
 
     async def list_services(self) -> list[dict[str, Any]]:
