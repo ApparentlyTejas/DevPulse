@@ -68,13 +68,13 @@ format: ## Run ruff format (writes changes).
 	$(COMPOSE) run --rm --no-deps api ruff format .
 
 typecheck: ## Run mypy strict.
-	$(COMPOSE) run --rm --no-deps api mypy app
+	$(COMPOSE) run --rm --no-deps api mypy app mcp_server
 
 test: ## Run pytest.
 	$(COMPOSE) run --rm api pytest
 
 test-cov: ## Run pytest with coverage.
-	$(COMPOSE) run --rm api pytest --cov=app --cov-report=term-missing
+	$(COMPOSE) run --rm api pytest --cov=app --cov=mcp_server --cov-report=term-missing
 
 check: lint typecheck test ## Run everything CI would run.
 

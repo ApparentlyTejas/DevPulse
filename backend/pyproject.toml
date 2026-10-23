@@ -68,7 +68,10 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["app*"]
+include = ["app*", "mcp_server*"]
+
+[project.scripts]
+devpulse-mcp = "mcp_server.server:main"
 
 # ============================================================================
 # Ruff — lint + format. Replaces flake8, isort, black, pyupgrade, and more.

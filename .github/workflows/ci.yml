@@ -54,7 +54,7 @@ jobs:
         run: uv sync --extra dev
 
       - name: Mypy strict
-        run: uv run mypy app
+        run: uv run mypy app mcp_server
 
   test:
     name: Test + coverage
@@ -80,7 +80,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           uv run pytest \
-            --cov=app --cov-report=term-missing \
+            --cov=app --cov=mcp_server --cov-report=term-missing \
             --cov-report=xml --cov-report=html
 
       - name: Upload coverage report

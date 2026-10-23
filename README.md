@@ -79,7 +79,7 @@ must be running locally — no other setup or secrets required.
 | Phase   | Area                              | Status |
 | ------- | --------------------------------- | ------ |
 | Phase 1 | Core backend (auth → incidents)   | **Done** (auth, orgs, services, metrics, alerts, incidents) |
-| Phase 2 | AI layer (Claude triage, MCP, RAG)| **In progress** — Claude-backed incident triage shipped; MCP server + RAG next |
+| Phase 2 | AI layer (Claude triage, MCP, RAG)| **In progress** — Claude-backed incident triage and an MCP server shipped; RAG next |
 | Phase 3 | Frontend                          | —      |
 | Phase 4 | Production infrastructure (AWS)   | —      |
 | Phase 5 | Polish, docs, demo                | —      |
@@ -103,3 +103,30 @@ information comes in.
 
 Requires `ANTHROPIC_API_KEY` (see `.env.example`). Backed by
 `app/modules/ai/`.
+
+## MCP server
+
+`backend/mcp_server/` exposes incidents, services, and triage to any MCP
+client (Claude Desktop, or anything else speaking the protocol) as tools:
+`list_incidents`, `get_incident`, `create_incident`, `update_incident_status`,
+`triage_incident`, `list_incident_triages`, `list_services`.
+
+It's a separate, lightweight process from the API itself — it holds no
+database connection of its own. Every tool call is a plain HTTP request
+against the already-running DevPulse API, so it inherits the exact same
+authorization rules (org membership, etc.) as every other API client,
+rather than duplicating that logic.
+
+```bash
+cd backend
+uv sync --extra dev
+
+DEVPULSE_MCP_ACCESS_TOKEN=<a valid access token>
+DEVPULSE_MCP_ORG_ID=<the org to scope every call to>
+DEVPULSE_MCP_API_BASE_URL=http://localhost:8000/api/v1   # default; override for a deployed API
+
+uv run devpulse-mcp
+```
+
+Point an MCP client's stdio config at `uv run devpulse-mcp` (run from
+`backend/`, with the three env vars above set) to connect it.
