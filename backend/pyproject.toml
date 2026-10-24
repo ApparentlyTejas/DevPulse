@@ -5,7 +5,7 @@ description = "DevPulse — AI-powered engineering operations platform (backend)
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
-authors = [{ name = "DevPulse" }]
+authors = [{ name = "Tejas Malhotra" }]
 
 # ----------------------------------------------------------------------------
 # Runtime dependencies. Anything imported by `app/`, `workers/`, `mcp_server/`.
