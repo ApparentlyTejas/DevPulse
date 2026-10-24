@@ -1,6 +1,11 @@
 # DevPulse
 
 ![CI](https://github.com/ApparentlyTejas/DevPulse/actions/workflows/ci.yml/badge.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
+![Ruff](https://img.shields.io/badge/lint-ruff-261230?logo=ruff&logoColor=white)
+![mypy](https://img.shields.io/badge/type%20checked-mypy%20strict-blue)
 
 AI-powered engineering operations platform. Centralizes service monitoring,
 metrics, incident management, and exposes infrastructure to Claude via the
