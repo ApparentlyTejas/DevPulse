@@ -14,6 +14,7 @@ from uuid import UUID
 import pytest
 from httpx import AsyncClient
 
+from app.core.config import get_settings
 from app.modules.ai import service as ai_service
 
 pytestmark = pytest.mark.integration
@@ -366,3 +367,62 @@ async def test_list_triages_empty_for_untriaged_incident(client: AsyncClient) ->
     )
     assert resp.status_code == 200
     assert resp.json() == []
+
+
+# ---------------------------------------------------------------------------
+# Rate limiting (shared "ai" budget across triage + postmortem, per org)
+# ---------------------------------------------------------------------------
+
+
+async def test_triage_rate_limit_returns_429_once_exceeded(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_claude(
+        monkeypatch,
+        _FakeMessage(
+            [_FakeBlock({"summary": "x", "suggested_severity": "sev3", "confidence": 0.5})]
+        ),
+    )
+    token, org_id, incident_id = await _setup(
+        client, "triage-ratelimit@example.com", "triage-ratelimit"
+    )
+    hdrs = {"Authorization": f"Bearer {token}"}
+    url = _triage_url(org_id, incident_id)
+    limit = get_settings().ai.rate_limit_per_minute
+
+    for _ in range(limit):
+        resp = await client.post(url, headers=hdrs)
+        assert resp.status_code == 201
+
+    resp = await client.post(url, headers=hdrs)
+    assert resp.status_code == 429
+    assert "Retry-After" in resp.headers
+
+
+async def test_triage_rate_limit_is_scoped_per_org(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A different org's budget is untouched by another org exhausting its own."""
+    _patch_claude(
+        monkeypatch,
+        _FakeMessage(
+            [_FakeBlock({"summary": "x", "suggested_severity": "sev3", "confidence": 0.5})]
+        ),
+    )
+    limit = get_settings().ai.rate_limit_per_minute
+
+    token_a, org_a, incident_a = await _setup(
+        client, "triage-ratelimit-a@example.com", "triage-ratelimit-a"
+    )
+    hdrs_a = {"Authorization": f"Bearer {token_a}"}
+    url_a = _triage_url(org_a, incident_a)
+    for _ in range(limit):
+        await client.post(url_a, headers=hdrs_a)
+    assert (await client.post(url_a, headers=hdrs_a)).status_code == 429
+
+    token_b, org_b, incident_b = await _setup(
+        client, "triage-ratelimit-b@example.com", "triage-ratelimit-b"
+    )
+    hdrs_b = {"Authorization": f"Bearer {token_b}"}
+    resp = await client.post(_triage_url(org_b, incident_b), headers=hdrs_b)
+    assert resp.status_code == 201

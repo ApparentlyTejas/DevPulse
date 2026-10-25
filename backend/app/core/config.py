@@ -102,6 +102,19 @@ class AISettings(BaseSettings):
 
     api_key: SecretStr = SecretStr("")
     model: str = "claude-sonnet-4-6"
+    # Per-org, per-minute cap shared across triage + postmortem generation —
+    # both call the Claude API, so both draw from the same budget.
+    rate_limit_per_minute: int = 20
+    # The SDK's own default read timeout is 600s — fine for a batch job, not
+    # for a request/response HTTP endpoint that's holding a DB session open
+    # for the duration. 30s comfortably covers both triage (a short tool
+    # call) and postmortem generation (a longer markdown document) without
+    # letting a stalled Claude request tie up a connection for minutes.
+    request_timeout_seconds: float = 30.0
+    # The SDK already retries connection errors / 429 / 5xx with backoff by
+    # default; kept explicit (rather than left as an implicit SDK default)
+    # so a future SDK upgrade can't silently change our retry behavior.
+    max_retries: int = 2
 
 
 class Settings(BaseSettings):

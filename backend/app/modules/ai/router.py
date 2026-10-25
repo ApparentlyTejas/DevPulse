@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.config import get_settings
+from app.core.rate_limit import rate_limit_by_org
 from app.db.session import DbSession
 from app.modules.ai import service as ai_service
 from app.modules.ai.schemas import IncidentTriageOut, PostmortemOut
@@ -15,11 +16,19 @@ from app.modules.auth.deps import CurrentUser
 
 router = APIRouter()
 
+# Shared budget: triage and postmortem generation both call the Claude API,
+# so a client spamming either one draws down the same per-org allowance.
+_settings = get_settings()
+_ai_rate_limit = Depends(
+    rate_limit_by_org(scope="ai", limit=_settings.ai.rate_limit_per_minute, window_seconds=60)
+)
+
 
 @router.post(
     "/triage",
     response_model=IncidentTriageOut,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[_ai_rate_limit],
 )
 async def triage_incident(
     org_id: UUID, incident_id: UUID, db: DbSession, current_user: CurrentUser
@@ -65,6 +74,7 @@ async def list_triages(
     "/postmortem",
     response_model=PostmortemOut,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[_ai_rate_limit],
 )
 async def generate_postmortem(
     org_id: UUID, incident_id: UUID, db: DbSession, current_user: CurrentUser

@@ -13,10 +13,12 @@ production, but pointed at the test database.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from collections.abc import AsyncIterator, Iterator
 
 import pytest
 import pytest_asyncio
+import redis.asyncio as aioredis
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -30,6 +32,7 @@ from testcontainers.redis import RedisContainer
 
 from alembic import command
 from alembic.config import Config
+from app.db.redis import get_redis
 from app.db.session import get_db_session
 from app.main import create_app
 
@@ -94,6 +97,27 @@ def redis_url(redis_container: RedisContainer) -> str:
     return f"redis://{host}:{port}/0"
 
 
+@pytest_asyncio.fixture
+async def redis_client(redis_url: str) -> AsyncIterator[aioredis.Redis]:
+    """Fresh async client against the testcontainer Redis, per test.
+
+    Function-scoped (unlike the session-scoped `db_engine`): redis-py keeps
+    a live connection bound to the event loop it first connected on, and
+    pytest-asyncio gives each test function its own loop, so a
+    session-scoped client would break the moment a second test tried to
+    reuse it. SQLAlchemy's engine avoids the same trap via `NullPool`
+    (a fresh connection per use); reconnecting per test is the Redis
+    equivalent.
+    """
+    client: aioredis.Redis = aioredis.from_url(redis_url, decode_responses=True)
+    yield client
+    # Under pytest-asyncio's session-scoped loop + per-test fixture teardown,
+    # the loop this connection's socket was opened on can already be gone by
+    # the time this runs. The connection closes with the process either way.
+    with contextlib.suppress(RuntimeError):
+        await client.aclose()
+
+
 # ---------------------------------------------------------------------------
 # Per-test FastAPI test client
 #
@@ -104,8 +128,10 @@ def redis_url(redis_container: RedisContainer) -> str:
 
 
 @pytest_asyncio.fixture
-async def client(db_engine: AsyncEngine, redis_url: str) -> AsyncIterator[AsyncClient]:
-    """HTTP client backed by the test database."""
+async def client(
+    db_engine: AsyncEngine, redis_client: aioredis.Redis
+) -> AsyncIterator[AsyncClient]:
+    """HTTP client backed by the test database and the test Redis."""
     factory = async_sessionmaker(
         db_engine,
         expire_on_commit=False,
@@ -125,6 +151,7 @@ async def client(db_engine: AsyncEngine, redis_url: str) -> AsyncIterator[AsyncC
 
     app = create_app()
     app.dependency_overrides[get_db_session] = _db_override
+    app.dependency_overrides[get_redis] = lambda: redis_client
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
