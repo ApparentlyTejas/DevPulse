@@ -6,6 +6,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
 ![Ruff](https://img.shields.io/badge/lint-ruff-261230?logo=ruff&logoColor=white)
 ![mypy](https://img.shields.io/badge/type%20checked-mypy%20strict-blue)
+![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)
 
 AI-powered engineering operations platform. Centralizes service monitoring,
 metrics, incident management, and exposes infrastructure to Claude via the
@@ -86,7 +87,7 @@ must be running locally — no other setup or secrets required.
 | Phase 1 | Core backend (auth → incidents)   | **Done** (auth, orgs, services, metrics, alerts, incidents) |
 | Phase 2 | AI layer (Claude triage, MCP, RAG)| **In progress** — Claude-backed incident triage and an MCP server shipped; RAG next |
 | Phase 3 | Frontend                          | —      |
-| Phase 4 | Production infrastructure (AWS)   | —      |
+| Phase 4 | Production infrastructure (AWS)   | **In progress** — [pagination, rate limiting, Claude timeouts/retries, prod secret guard](#production-hardening) shipped; deployment + observability next |
 | Phase 5 | Polish, docs, demo                | —      |
 
 ## AI incident triage
@@ -107,7 +108,9 @@ the last one, so an incident keeps a full triage history as new
 information comes in.
 
 Requires `ANTHROPIC_API_KEY` (see `.env.example`). Backed by
-`app/modules/ai/`.
+`app/modules/ai/`. Both triage and postmortem generation share one
+per-org, per-minute rate limit (`ANTHROPIC_RATE_LIMIT_PER_MINUTE`, default
+20) — see [Production hardening](#production-hardening).
 
 ## AI postmortem generation
 
@@ -155,3 +158,33 @@ uv run devpulse-mcp
 
 Point an MCP client's stdio config at `uv run devpulse-mcp` (run from
 `backend/`, with the three env vars above set) to connect it.
+
+## Production hardening
+
+Moving past demo-level behavior, in progress:
+
+- **Pagination** — every list endpoint whose result set grows without
+  bound (incidents, services, alert events, metrics) returns a
+  `{items, total, limit, offset}` page (`limit` capped at 200) instead of
+  an unbounded bare array. Config objects whose cardinality is inherently
+  small and human-bounded (orgs a user belongs to, org members, alert
+  rules) intentionally keep returning a bare list.
+- **Rate limiting** — triage and postmortem generation (the two endpoints
+  that call the paid Claude API) share one Redis-backed, per-org,
+  per-minute budget (`ANTHROPIC_RATE_LIMIT_PER_MINUTE`), so a bug or an
+  abusive client can't run up unbounded API spend. A 429 includes
+  `Retry-After`.
+- **Claude request timeout + retries** — the Anthropic SDK's own default
+  read timeout is 600s, which would hold a DB session open for minutes on
+  a stalled call; `ANTHROPIC_REQUEST_TIMEOUT_SECONDS` (default 30) and
+  `ANTHROPIC_MAX_RETRIES` (default 2, the SDK's own default made explicit)
+  bound that.
+- **Prod secret guard** — `Settings` refuses to construct when
+  `APP_ENV=prod` and `SECURITY_JWT_SECRET` is still the default or the
+  `.env.example` placeholder (or under 32 chars), so a deployment can't
+  silently go live signing tokens with a secret anyone could read in this
+  repo.
+
+Not yet done: an actual deployment target (there's a `Dockerfile`, but
+nothing is live anywhere), error tracking (Sentry or equivalent), and
+request correlation IDs.
