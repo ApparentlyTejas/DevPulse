@@ -96,7 +96,9 @@ async def test_list_metrics_returns_snapshots(client: AsyncClient) -> None:
 
     resp = await client.get(url, headers=hdrs)
     assert resp.status_code == 200
-    assert len(resp.json()) == 3
+    body = resp.json()
+    assert len(body["items"]) == 3
+    assert body["total"] == 3
 
 
 async def test_list_metrics_filter_by_name(client: AsyncClient) -> None:
@@ -111,7 +113,7 @@ async def test_list_metrics_filter_by_name(client: AsyncClient) -> None:
 
     resp = await client.get(url, params={"metric_name": "cpu"}, headers=hdrs)
     assert resp.status_code == 200
-    data = resp.json()
+    data = resp.json()["items"]
     assert len(data) == 1
     assert data[0]["metric_name"] == "cpu"
 
@@ -128,4 +130,24 @@ async def test_list_metrics_limit(client: AsyncClient) -> None:
 
     resp = await client.get(url, params={"limit": 3}, headers=hdrs)
     assert resp.status_code == 200
-    assert len(resp.json()) == 3
+    body = resp.json()
+    assert len(body["items"]) == 3
+    assert body["total"] == 5
+
+
+async def test_list_metrics_offset(client: AsyncClient) -> None:
+    token, org_id, svc_id = await _setup(
+        client, "metrics-offset@example.com", "metrics-offset-org", "metrics-offset-svc"
+    )
+    hdrs = {"Authorization": f"Bearer {token}"}
+    url = _metric_url(org_id, svc_id)
+
+    for i in range(5):
+        await client.post(url, json={"metric_name": "req", "value": float(i)}, headers=hdrs)
+
+    resp = await client.get(url, params={"limit": 2, "offset": 2}, headers=hdrs)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["items"]) == 2
+    assert body["total"] == 5
+    assert body["offset"] == 2

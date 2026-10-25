@@ -103,7 +103,34 @@ async def test_list_incidents(client: AsyncClient) -> None:
 
     resp = await client.get(url, headers=hdrs)
     assert resp.status_code == 200
-    assert len(resp.json()) == 2
+    body = resp.json()
+    assert len(body["items"]) == 2
+    assert body["total"] == 2
+
+
+async def test_list_incidents_respects_limit_and_offset(client: AsyncClient) -> None:
+    token, org_id = await _setup(client, "inc-list-page@example.com", "inc-list-page-org")
+    hdrs = {"Authorization": f"Bearer {token}"}
+    url = _inc_url(org_id)
+
+    for i in range(3):
+        await client.post(url, json={"title": f"Incident {i}", "severity": "sev3"}, headers=hdrs)
+
+    resp = await client.get(url, params={"limit": 1, "offset": 1}, headers=hdrs)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["items"]) == 1
+    assert body["total"] == 3
+    assert body["limit"] == 1
+    assert body["offset"] == 1
+
+
+async def test_list_incidents_rejects_limit_over_max(client: AsyncClient) -> None:
+    token, org_id = await _setup(client, "inc-list-badlimit@example.com", "inc-badlimit-org")
+    hdrs = {"Authorization": f"Bearer {token}"}
+
+    resp = await client.get(_inc_url(org_id), params={"limit": 500}, headers=hdrs)
+    assert resp.status_code == 422
 
 
 async def test_get_incident_not_found_returns_404(client: AsyncClient) -> None:

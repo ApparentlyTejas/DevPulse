@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.metrics.models import MetricSnapshot
@@ -87,18 +87,25 @@ async def query(
     user_id: UUID,
     metric_name: str | None = None,
     limit: int = 100,
-) -> list[MetricSnapshot]:
+    offset: int = 0,
+) -> tuple[list[MetricSnapshot], int]:
     await _assert_service_in_org(db, org_id, service_id, user_id)
 
-    stmt = (
+    base = (
         select(MetricSnapshot)
         .where(MetricSnapshot.service_id == service_id)
         .where(MetricSnapshot.org_id == org_id)
-        .order_by(MetricSnapshot.recorded_at.desc())
-        .limit(limit)
+    )
+    count_stmt = (
+        select(func.count())
+        .select_from(MetricSnapshot)
+        .where(MetricSnapshot.service_id == service_id, MetricSnapshot.org_id == org_id)
     )
     if metric_name is not None:
-        stmt = stmt.where(MetricSnapshot.metric_name == metric_name)
+        base = base.where(MetricSnapshot.metric_name == metric_name)
+        count_stmt = count_stmt.where(MetricSnapshot.metric_name == metric_name)
 
+    total = await db.scalar(count_stmt)
+    stmt = base.order_by(MetricSnapshot.recorded_at.desc()).limit(limit).offset(offset)
     result = await db.execute(stmt)
-    return list(result.scalars().all())
+    return list(result.scalars().all()), total or 0

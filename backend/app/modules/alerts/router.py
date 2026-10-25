@@ -6,6 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
 
+from app.core.pagination import Page, Pagination
 from app.db.session import DbSession
 from app.modules.alerts import service as alerts_service
 from app.modules.alerts.schemas import (
@@ -204,12 +205,14 @@ async def create_event(
     return AlertEventOut.model_validate(event)
 
 
-@router.get("/events", response_model=list[AlertEventOut])
+@router.get("/events", response_model=Page[AlertEventOut])
 async def list_events(
-    org_id: UUID, service_id: UUID, db: DbSession, current_user: CurrentUser
-) -> list[AlertEventOut]:
+    org_id: UUID, service_id: UUID, db: DbSession, current_user: CurrentUser, page: Pagination
+) -> Page[AlertEventOut]:
     try:
-        events = await alerts_service.list_events(db, org_id, service_id, current_user.id)
+        events, total = await alerts_service.list_events(
+            db, org_id, service_id, current_user.id, limit=page.limit, offset=page.offset
+        )
     except OrgNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
@@ -218,7 +221,12 @@ async def list_events(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Service not found"
         ) from exc
-    return [AlertEventOut.model_validate(e) for e in events]
+    return Page(
+        items=[AlertEventOut.model_validate(e) for e in events],
+        total=total,
+        limit=page.limit,
+        offset=page.offset,
+    )
 
 
 @router.get("/events/{event_id}", response_model=AlertEventOut)

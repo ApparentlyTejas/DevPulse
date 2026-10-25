@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.alerts.models import (
@@ -205,17 +205,25 @@ async def create_event(
 
 
 async def list_events(
-    db: AsyncSession, org_id: UUID, service_id: UUID, user_id: UUID
-) -> list[AlertEvent]:
+    db: AsyncSession, org_id: UUID, service_id: UUID, user_id: UUID, limit: int, offset: int
+) -> tuple[list[AlertEvent], int]:
     await _assert_service_in_org(db, org_id, service_id, user_id)
 
+    total = await db.scalar(
+        select(func.count())
+        .select_from(AlertEvent)
+        .where(AlertEvent.service_id == service_id)
+        .where(AlertEvent.org_id == org_id)
+    )
     result = await db.execute(
         select(AlertEvent)
         .where(AlertEvent.service_id == service_id)
         .where(AlertEvent.org_id == org_id)
         .order_by(AlertEvent.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
-    return list(result.scalars().all())
+    return list(result.scalars().all()), total or 0
 
 
 async def get_event(

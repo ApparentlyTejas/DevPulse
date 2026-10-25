@@ -39,7 +39,16 @@ async def test_list_incidents_sends_bearer_token_and_org_scoped_path() -> None:
         captured["method"] = request.method
         captured["path"] = request.url.path
         captured["auth"] = request.headers["authorization"]
-        return httpx.Response(200, json=[{"id": str(INCIDENT_ID), "title": "Database is slow"}])
+        captured["params"] = dict(request.url.params)
+        return httpx.Response(
+            200,
+            json={
+                "items": [{"id": str(INCIDENT_ID), "title": "Database is slow"}],
+                "total": 1,
+                "limit": 200,
+                "offset": 0,
+            },
+        )
 
     client = _client(handler)
     result = await client.list_incidents()
@@ -47,6 +56,7 @@ async def test_list_incidents_sends_bearer_token_and_org_scoped_path() -> None:
     assert captured["method"] == "GET"
     assert captured["path"] == f"/api/v1/organizations/{ORG_ID}/incidents"
     assert captured["auth"] == "Bearer test-token"
+    assert captured["params"] == {"limit": "200", "offset": "0"}
     assert result == [{"id": str(INCIDENT_ID), "title": "Database is slow"}]
     await client.aclose()
 
@@ -164,7 +174,9 @@ async def test_list_postmortems() -> None:
 async def test_list_services() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == f"/api/v1/organizations/{ORG_ID}/services"
-        return httpx.Response(200, json=[{"name": "Checkout"}])
+        return httpx.Response(
+            200, json={"items": [{"name": "Checkout"}], "total": 1, "limit": 200, "offset": 0}
+        )
 
     client = _client(handler)
     result = await client.list_services()

@@ -57,7 +57,14 @@ class DevPulseClient:
     # ---------------------------------------------------------------- incidents
 
     async def list_incidents(self) -> list[dict[str, Any]]:
-        return await self._request("GET", f"{self._org_path}/incidents")  # type: ignore[no-any-return]
+        # The API paginates this endpoint (`Page[...]`); a tool call is a
+        # single round trip for an agent, not an interactive paged UI, so we
+        # just ask for the largest page the API allows rather than exposing
+        # limit/offset as tool arguments.
+        page = await self._request(
+            "GET", f"{self._org_path}/incidents", params={"limit": 200, "offset": 0}
+        )
+        return page["items"]  # type: ignore[no-any-return]
 
     async def get_incident(self, incident_id: UUID) -> dict[str, Any]:
         return await self._request("GET", f"{self._org_path}/incidents/{incident_id}")  # type: ignore[no-any-return]
@@ -109,7 +116,10 @@ class DevPulseClient:
     # --------------------------------------------------------------- services
 
     async def list_services(self) -> list[dict[str, Any]]:
-        return await self._request("GET", f"{self._org_path}/services")  # type: ignore[no-any-return]
+        page = await self._request(
+            "GET", f"{self._org_path}/services", params={"limit": 200, "offset": 0}
+        )
+        return page["items"]  # type: ignore[no-any-return]
 
 
 @lru_cache(maxsize=1)

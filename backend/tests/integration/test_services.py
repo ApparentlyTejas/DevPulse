@@ -97,7 +97,9 @@ async def test_list_services(client: AsyncClient) -> None:
 
     resp = await client.get(_svc_url(org["id"]), headers=hdrs)
     assert resp.status_code == 200
-    assert len(resp.json()) == 2
+    body = resp.json()
+    assert len(body["items"]) == 2
+    assert body["total"] == 2
 
 
 async def test_get_service_not_found_returns_404(client: AsyncClient) -> None:

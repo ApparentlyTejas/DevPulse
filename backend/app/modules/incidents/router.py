@@ -6,6 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
 
+from app.core.pagination import Page, Pagination
 from app.db.session import DbSession
 from app.modules.auth.deps import CurrentUser
 from app.modules.incidents import service as incidents_service
@@ -50,19 +51,24 @@ async def create_incident(
     return IncidentOut.model_validate(incident)
 
 
-@router.get("", response_model=list[IncidentOut])
+@router.get("", response_model=Page[IncidentOut])
 async def list_incidents(
-    org_id: UUID, db: DbSession, current_user: CurrentUser
-) -> list[IncidentOut]:
+    org_id: UUID, db: DbSession, current_user: CurrentUser, page: Pagination
+) -> Page[IncidentOut]:
     try:
-        incidents = await incidents_service.list_incidents(
-            db, org_id=org_id, user_id=current_user.id
+        incidents, total = await incidents_service.list_incidents(
+            db, org_id=org_id, user_id=current_user.id, limit=page.limit, offset=page.offset
         )
     except OrgNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
         ) from exc
-    return [IncidentOut.model_validate(i) for i in incidents]
+    return Page(
+        items=[IncidentOut.model_validate(i) for i in incidents],
+        total=total,
+        limit=page.limit,
+        offset=page.offset,
+    )
 
 
 @router.get("/{incident_id}", response_model=IncidentOut)

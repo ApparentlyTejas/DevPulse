@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.incidents.models import Incident, IncidentSeverity, IncidentStatus
@@ -95,13 +95,22 @@ async def create_incident(
     return incident
 
 
-async def list_incidents(db: AsyncSession, org_id: UUID, user_id: UUID) -> list[Incident]:
+async def list_incidents(
+    db: AsyncSession, org_id: UUID, user_id: UUID, limit: int, offset: int
+) -> tuple[list[Incident], int]:
     await _assert_org_membership(db, org_id, user_id)
 
-    result = await db.execute(
-        select(Incident).where(Incident.org_id == org_id).order_by(Incident.created_at.desc())
+    total = await db.scalar(
+        select(func.count()).select_from(Incident).where(Incident.org_id == org_id)
     )
-    return list(result.scalars().all())
+    result = await db.execute(
+        select(Incident)
+        .where(Incident.org_id == org_id)
+        .order_by(Incident.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return list(result.scalars().all()), total or 0
 
 
 async def get_incident(

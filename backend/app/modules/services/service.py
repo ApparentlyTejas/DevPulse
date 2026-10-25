@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.organizations.models import Organization, OrganizationMembership
@@ -82,13 +82,22 @@ async def create_service(
     return service
 
 
-async def list_services(db: AsyncSession, org_id: UUID, user_id: UUID) -> list[Service]:
+async def list_services(
+    db: AsyncSession, org_id: UUID, user_id: UUID, limit: int, offset: int
+) -> tuple[list[Service], int]:
     await _assert_org_membership(db, org_id, user_id)
 
-    result = await db.execute(
-        select(Service).where(Service.org_id == org_id).order_by(Service.name)
+    total = await db.scalar(
+        select(func.count()).select_from(Service).where(Service.org_id == org_id)
     )
-    return list(result.scalars().all())
+    result = await db.execute(
+        select(Service)
+        .where(Service.org_id == org_id)
+        .order_by(Service.name)
+        .limit(limit)
+        .offset(offset)
+    )
+    return list(result.scalars().all()), total or 0
 
 
 async def get_service(db: AsyncSession, org_id: UUID, service_id: UUID, user_id: UUID) -> Service:

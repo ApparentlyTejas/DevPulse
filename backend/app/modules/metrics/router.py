@@ -6,6 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
+from app.core.pagination import Page, Pagination
 from app.db.session import DbSession
 from app.modules.auth.deps import CurrentUser
 from app.modules.metrics import service as metrics_service
@@ -49,23 +50,24 @@ async def ingest_metric(
     return MetricSnapshotOut.model_validate(snapshot)
 
 
-@router.get("", response_model=list[MetricSnapshotOut])
+@router.get("", response_model=Page[MetricSnapshotOut])
 async def list_metrics(
     org_id: UUID,
     service_id: UUID,
     db: DbSession,
     current_user: CurrentUser,
+    page: Pagination,
     metric_name: str | None = Query(None, max_length=100),
-    limit: int = Query(100, ge=1, le=1000),
-) -> list[MetricSnapshotOut]:
+) -> Page[MetricSnapshotOut]:
     try:
-        snapshots = await metrics_service.query(
+        snapshots, total = await metrics_service.query(
             db,
             org_id=org_id,
             service_id=service_id,
             user_id=current_user.id,
             metric_name=metric_name,
-            limit=limit,
+            limit=page.limit,
+            offset=page.offset,
         )
     except OrgNotFoundError as exc:
         raise HTTPException(
@@ -75,4 +77,9 @@ async def list_metrics(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Service not found"
         ) from exc
-    return [MetricSnapshotOut.model_validate(s) for s in snapshots]
+    return Page(
+        items=[MetricSnapshotOut.model_validate(s) for s in snapshots],
+        total=total,
+        limit=page.limit,
+        offset=page.offset,
+    )

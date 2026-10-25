@@ -6,6 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
 
+from app.core.pagination import Page, Pagination
 from app.db.session import DbSession
 from app.modules.auth.deps import CurrentUser
 from app.modules.services import service as svc_service
@@ -48,15 +49,24 @@ async def create_service(
     return ServiceOut.model_validate(svc)
 
 
-@router.get("", response_model=list[ServiceOut])
-async def list_services(org_id: UUID, db: DbSession, current_user: CurrentUser) -> list[ServiceOut]:
+@router.get("", response_model=Page[ServiceOut])
+async def list_services(
+    org_id: UUID, db: DbSession, current_user: CurrentUser, page: Pagination
+) -> Page[ServiceOut]:
     try:
-        services = await svc_service.list_services(db, org_id=org_id, user_id=current_user.id)
+        services, total = await svc_service.list_services(
+            db, org_id=org_id, user_id=current_user.id, limit=page.limit, offset=page.offset
+        )
     except OrgNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
         ) from exc
-    return [ServiceOut.model_validate(s) for s in services]
+    return Page(
+        items=[ServiceOut.model_validate(s) for s in services],
+        total=total,
+        limit=page.limit,
+        offset=page.offset,
+    )
 
 
 @router.get("/{service_id}", response_model=ServiceOut)

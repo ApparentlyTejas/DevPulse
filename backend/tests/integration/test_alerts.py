@@ -153,6 +153,25 @@ async def test_create_alert_event_returns_201(client: AsyncClient) -> None:
     assert body["resolved_at"] is None
 
 
+async def test_list_alert_events_paginated(client: AsyncClient) -> None:
+    token, org_id, svc_id = await _setup(
+        client, "alerts-event-list@example.com", "alerts-event-list-org", "alerts-event-list-svc"
+    )
+    hdrs = {"Authorization": f"Bearer {token}"}
+    events_url = _alerts_url(org_id, svc_id) + "/events"
+
+    for _ in range(3):
+        await client.post(events_url, json=_EVENT_PAYLOAD, headers=hdrs)
+
+    resp = await client.get(events_url, params={"limit": 2}, headers=hdrs)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["items"]) == 2
+    assert body["total"] == 3
+    assert body["limit"] == 2
+    assert body["offset"] == 0
+
+
 async def test_acknowledge_alert_event(client: AsyncClient) -> None:
     token, org_id, svc_id = await _setup(
         client, "alerts-ack@example.com", "alerts-ack-org", "alerts-ack-svc"
