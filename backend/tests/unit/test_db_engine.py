@@ -8,9 +8,10 @@ for wiring up correctly.
 
 from __future__ import annotations
 
+from pydantic import SecretStr
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from app.core.config import Settings
+from app.core.config import SecuritySettings, Settings
 from app.db.engine import create_engine
 
 
@@ -33,7 +34,14 @@ def test_create_engine_pool_settings() -> None:
 
 
 def test_create_engine_echo_disabled_when_not_debug() -> None:
-    engine = create_engine(_settings(app_env="prod", app_debug=True))
+    # app_env="prod" now requires a real (non-placeholder) JWT secret.
+    engine = create_engine(
+        _settings(
+            app_env="prod",
+            app_debug=True,
+            security=SecuritySettings(jwt_secret=SecretStr("a" * 32)),
+        )
+    )
     # echo only turns on when BOTH app_env == "local" AND app_debug.
     assert engine.sync_engine.echo is False
 

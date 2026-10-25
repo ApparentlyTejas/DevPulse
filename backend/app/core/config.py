@@ -17,7 +17,7 @@ import json
 from functools import lru_cache
 from typing import Annotated, Literal
 
-from pydantic import Field, SecretStr, computed_field, field_validator
+from pydantic import Field, SecretStr, computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 AppEnv = Literal["local", "dev", "staging", "prod"]
@@ -148,6 +148,30 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env == "prod"
+
+    @model_validator(mode="after")
+    def _reject_placeholder_jwt_secret_in_prod(self) -> Settings:
+        """Refuse to start in prod with a weak or default-placeholder JWT secret.
+
+        `SecuritySettings.jwt_secret` defaults to the literal `"change-me"`,
+        and `.env.example` ships `change-me-to-a-long-random-string` as its
+        documented placeholder — both are public in the repo's source and
+        README. Anyone who's read either could forge valid access tokens
+        against any deployment that forgot to override this. Outside
+        `app_env == "prod"` (local/dev/staging) the placeholder is left
+        alone, since those environments are expected to use it.
+        """
+        if not self.is_production:
+            return self
+
+        secret = self.security.jwt_secret.get_secret_value()
+        if secret in {"change-me", "change-me-to-a-long-random-string"} or len(secret) < 32:
+            raise ValueError(
+                "SECURITY_JWT_SECRET must be set to a real random value of at "
+                "least 32 characters when APP_ENV=prod — refusing to start "
+                "with the default/placeholder secret."
+            )
+        return self
 
 
 @lru_cache(maxsize=1)
