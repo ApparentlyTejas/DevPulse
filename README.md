@@ -1,55 +1,98 @@
 # DevPulse
 
+DevPulse is an engineering-ops backend that tracks services, metrics, alerts, and incidents for an organization, then hands that incident data to Claude for triage and postmortem drafting, both through a REST API and through a native MCP server so any MCP client (Claude Desktop included) can query and act on the same data. It is not a demo wrapped around a chatbot: it has org-scoped auth, Redis-backed rate limiting on every paid AI call, pagination on every unbounded list endpoint, a prod-safe secret guard, and a test suite that spins up real Postgres and Redis containers instead of mocking the database away.
+
 ![CI](https://github.com/ApparentlyTejas/DevPulse/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0%20async-d71f00?logo=sqlalchemy&logoColor=white)
 ![Ruff](https://img.shields.io/badge/lint-ruff-261230?logo=ruff&logoColor=white)
 ![mypy](https://img.shields.io/badge/type%20checked-mypy%20strict-blue)
 ![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)
 
-AI-powered engineering operations platform. Centralizes service monitoring,
-metrics, incident management, and exposes infrastructure to Claude via the
-Model Context Protocol (MCP).
+## What it does
 
+DevPulse models the core of an incident-management tool (think a small internal PagerDuty slice): organizations and members, services, metrics, alert rules and alert events, and incidents with a status lifecycle. On top of that it adds an AI layer backed by the Anthropic API:
 
+- **Incident triage.** Claude reads an incident's title, severity, status, linked service, and description, and returns a structured summary, a suggested severity, and a confidence score, enforced through a forced tool call rather than parsed from freeform text. Every run is appended to an `incident_triages` table, so an incident keeps a full triage history, not just the latest guess.
+- **Postmortem generation.** Claude drafts a postmortem strictly from the incident's recorded facts (timestamps, severity, linked service, full triage history) and is explicitly instructed to say "the data doesn't support a root cause" rather than invent one. Every draft is persisted, same as triage.
+- **MCP server.** A separate process (`backend/mcp_server/`) exposes incidents, services, triage, and postmortems as MCP tools, so a model talking over the Model Context Protocol can list incidents, create one, trigger a triage, or pull a postmortem, all through the same authenticated REST API everything else uses.
 
-## Stack
+## Architecture
 
-- **Backend:** FastAPI, Python 3.12, SQLAlchemy 2.0 (async), Alembic,
-  PostgreSQL 16 + pgvector, Redis 7, APScheduler + arq.
-- **AI:** Anthropic SDK, MCP Python SDK.
-- **Frontend:** React 18 + TypeScript + Vite + shadcn/ui (Phase 3).
-- **Infra:** Docker, Docker Compose, GitHub Actions, AWS (EC2/RDS/S3),
-  Terraform, Nginx (Phase 4).
+```mermaid
+flowchart LR
+    subgraph Clients
+        UI[REST API client]
+        MCPClient[MCP client, e.g. Claude Desktop]
+    end
 
-## Repository layout
+    subgraph DevPulse Backend
+        API[FastAPI app<br/>auth, orgs, services,<br/>metrics, alerts, incidents]
+        AI[AI module<br/>triage + postmortem service]
+        RL[Redis rate limiter<br/>per-org, per-minute]
+        MCP[MCP server<br/>stdio process, no DB of its own]
+    end
 
+    PG[(PostgreSQL 16<br/>+ pgvector)]
+    REDIS[(Redis 7)]
+    CLAUDE[Anthropic API<br/>Claude, forced tool calls]
+
+    UI -->|HTTPS + JWT| API
+    MCPClient -->|MCP over stdio| MCP
+    MCP -->|HTTPS + same access token<br/>same org-scoped authz| API
+    API --> PG
+    API --> AI
+    AI --> RL
+    RL --> REDIS
+    AI -->|structured tool-call request| CLAUDE
+    CLAUDE -->|summary, severity, confidence| AI
+    AI -->|persist triage / postmortem| PG
 ```
-devpulse/
-├── backend/           FastAPI app, workers, MCP server (one Python package)
-├── frontend/          React app (Phase 3)
-├── infrastructure/    Terraform, nginx, postgres init scripts
-├── docs/              Architecture, ADRs, runbooks
-├── docker-compose.yml Local dev orchestration
-└── Makefile           Common developer commands
-```
 
-See [docs/adr/](docs/adr) for architecture decisions.
+The MCP server deliberately holds no database connection of its own. Every tool call it makes is a plain HTTP request against the already-running API, so it inherits the exact same org-membership authorization as any other client instead of duplicating that logic in a second place.
 
-## Local development
+## Features
+
+- Org-scoped auth with argon2id password hashing and JWT access tokens.
+- Services, metrics, alert rules, alert events, and incidents, each with its own router, service layer, and SQLAlchemy models.
+- Claude-backed incident triage with a persisted history (`incident_triages`), driven by a forced tool call so the response shape never depends on how the model phrases things.
+- Claude-backed postmortem generation, grounded only in recorded incident facts, with a persisted history (`postmortems`).
+- An MCP server (`devpulse-mcp`) exposing `list_incidents`, `get_incident`, `create_incident`, `update_incident_status`, `triage_incident`, `list_incident_triages`, `generate_postmortem`, `list_postmortems`, and `list_services` as MCP tools.
+- Every unbounded list endpoint (incidents, services, alert events, metrics) returns `{items, total, limit, offset}` instead of a bare array; small, human-bounded collections (org members, alert rules) intentionally stay as plain lists.
+- A Redis-backed, fixed-window rate limit shared by triage and postmortem generation, scoped per organization per minute, returning `429` with `Retry-After` when exceeded.
+- An explicit Anthropic request timeout and retry count instead of the SDK's 600 second default, so a stalled Claude call can't hold a database session open for minutes.
+- A prod secret guard: `Settings` refuses to construct when `APP_ENV=prod` and the JWT signing secret is still a default, a placeholder, or under 32 characters.
+
+## Tech stack
+
+| Layer | Technology |
+| --- | --- |
+| API | FastAPI, Python 3.12, Pydantic v2 |
+| Database | PostgreSQL 16 with pgvector, SQLAlchemy 2.0 (async), Alembic migrations |
+| Cache / queue | Redis 7, arq, APScheduler |
+| Auth | argon2id (argon2-cffi), PyJWT |
+| AI | Anthropic SDK (forced tool calls), MCP Python SDK |
+| Testing | pytest, pytest-asyncio, testcontainers (real Postgres/Redis in CI), freezegun |
+| Tooling | ruff, mypy (strict), uv, Docker Compose, GitHub Actions |
+| Logging | structlog (structured JSON) |
+
+Frontend (React 18, TypeScript, Vite, shadcn/ui) is planned for a later phase and is not implemented yet, so there is no UI to screenshot today; everything above is exercised through the REST API, the test suite, and the MCP server.
+
+## Running it locally
 
 Requirements: Docker, Docker Compose v2, GNU Make.
 
 ```bash
-cp .env.example .env       # then edit secrets
+cp .env.example .env       # then edit secrets, including ANTHROPIC_API_KEY
 make up                    # starts postgres, redis, api
 curl http://localhost:8000/healthz
 make logs                  # tail container logs
 make down                  # stop everything
 ```
 
-Run tests / lint / typecheck:
+Tests, lint, and type-check:
 
 ```bash
 make test
@@ -57,134 +100,43 @@ make lint
 make typecheck
 ```
 
-### Running lint / type-check / coverage locally (without Docker)
-
-CI (`.github/workflows/ci.yml`) runs ruff, mypy, and the full pytest suite
-with coverage on every push/PR to `main`. You can run the same checks
-locally with [uv](https://docs.astral.sh/uv/), from `backend/`:
-
-```bash
-cd backend
-uv sync --extra dev                 # install runtime + dev dependencies
-
-uv run ruff check .                 # lint
-uv run ruff format --check .        # formatting
-
-uv run mypy app                     # strict type check
-
-uv run pytest --cov=app --cov-report=term-missing --cov-report=html
-# open backend/htmlcov/index.html for the full coverage report
-```
-
-Integration tests spin up ephemeral Postgres/Redis containers via
-[testcontainers](https://testcontainers-python.readthedocs.io/), so Docker
-must be running locally — no other setup or secrets required.
-
-## Project status
-
-| Phase   | Area                              | Status |
-| ------- | --------------------------------- | ------ |
-| Phase 1 | Core backend (auth → incidents)   | **Done** (auth, orgs, services, metrics, alerts, incidents) |
-| Phase 2 | AI layer (Claude triage, MCP, RAG)| **In progress** — Claude-backed incident triage and an MCP server shipped; RAG next |
-| Phase 3 | Frontend                          | —      |
-| Phase 4 | Production infrastructure (AWS)   | **In progress** — [pagination, rate limiting, Claude timeouts/retries, prod secret guard](#production-hardening) shipped; deployment + observability next |
-| Phase 5 | Polish, docs, demo                | —      |
-
-## AI incident triage
-
-Every incident can be triaged by Claude on demand:
-
-```
-POST /api/v1/organizations/{org_id}/incidents/{incident_id}/triage
-GET  /api/v1/organizations/{org_id}/incidents/{incident_id}/triage   # history, newest first
-```
-
-Claude gets the incident's title, severity, status, linked service (if any),
-and description, and returns a structured assessment via a forced tool
-call (`summary`, `suggested_severity`, `confidence`) — not freeform text —
-so the response shape is reliable regardless of model phrasing. Each
-triage run is persisted (`incident_triages` table) rather than overwriting
-the last one, so an incident keeps a full triage history as new
-information comes in.
-
-Requires `ANTHROPIC_API_KEY` (see `.env.example`). Backed by
-`app/modules/ai/`. Both triage and postmortem generation share one
-per-org, per-minute rate limit (`ANTHROPIC_RATE_LIMIT_PER_MINUTE`, default
-20) — see [Production hardening](#production-hardening).
-
-## AI postmortem generation
-
-```
-POST /api/v1/organizations/{org_id}/incidents/{incident_id}/postmortem
-GET  /api/v1/organizations/{org_id}/incidents/{incident_id}/postmortem   # history, newest first
-```
-
-Claude writes the postmortem strictly from an incident's recorded facts —
-title, severity, status, open/resolve timestamps, linked service, description,
-and its full triage history — and is explicitly instructed not to invent a
-root cause, metric, or system name the data doesn't support. If the facts
-don't establish a root cause, the postmortem says so plainly and names what
-information would be needed, rather than guessing one. Like triage, every
-generation is persisted (`postmortems` table) rather than overwriting the
-last one.
-
-Requires `ANTHROPIC_API_KEY` (see `.env.example`). Backed by
-`app/modules/ai/`.
-
-## MCP server
-
-`backend/mcp_server/` exposes incidents, services, triage, and postmortem
-generation to any MCP client (Claude Desktop, or anything else speaking the
-protocol) as tools: `list_incidents`, `get_incident`, `create_incident`,
-`update_incident_status`, `triage_incident`, `list_incident_triages`,
-`generate_postmortem`, `list_postmortems`, `list_services`.
-
-It's a separate, lightweight process from the API itself — it holds no
-database connection of its own. Every tool call is a plain HTTP request
-against the already-running DevPulse API, so it inherits the exact same
-authorization rules (org membership, etc.) as every other API client,
-rather than duplicating that logic.
+Or without Docker, from `backend/` with [uv](https://docs.astral.sh/uv/):
 
 ```bash
 cd backend
 uv sync --extra dev
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy app
+uv run pytest --cov=app --cov-report=term-missing --cov-report=html
+```
 
-DEVPULSE_MCP_ACCESS_TOKEN=<a valid access token>
-DEVPULSE_MCP_ORG_ID=<the org to scope every call to>
-DEVPULSE_MCP_API_BASE_URL=http://localhost:8000/api/v1   # default; override for a deployed API
+Integration tests spin up ephemeral Postgres and Redis containers via [testcontainers](https://testcontainers-python.readthedocs.io/), so Docker needs to be running, but no manual setup or secrets are required for them.
 
+To run the MCP server against a running API:
+
+```bash
+cd backend
+uv sync --extra dev
+DEVPULSE_MCP_ACCESS_TOKEN=<a valid access token> \
+DEVPULSE_MCP_ORG_ID=<the org to scope every call to> \
 uv run devpulse-mcp
 ```
 
-Point an MCP client's stdio config at `uv run devpulse-mcp` (run from
-`backend/`, with the three env vars above set) to connect it.
+## What's technically interesting here
 
-## Production hardening
+- **Forcing structure out of an LLM, not parsing it out.** Both triage and postmortem generation use Anthropic's tool-call mechanism to force Claude into a fixed response shape (`summary`, `suggested_severity`, `confidence` for triage) instead of asking for JSON in a prompt and hoping. That removes an entire class of "the model added a markdown fence around its JSON" bugs that string-parsed LLM integrations tend to hit in production.
+- **An MCP server with no database of its own.** Rather than building a second data-access layer for MCP clients, `mcp_server/` is a thin stdio process that calls the real API over HTTP using a real access token. That one design choice means the authorization rules (who can see which org's incidents) only exist in one place, and the MCP surface can never drift out of sync with the REST API's behavior as the product grows.
+- **Treating the Claude API as a cost center, not just a feature.** The rate limiter, the explicit request timeout (overriding the SDK's 600-second default), and the retry count are all aimed at one failure mode that most AI side-projects never think about: a bug or an abusive client quietly running up real money against a paid API while holding database connections open. Those three pieces plus the prod secret guard are the difference between "AI demo" and "AI feature with a production incident budget."
 
-Moving past demo-level behavior, in progress:
+## Project status
 
-- **Pagination** — every list endpoint whose result set grows without
-  bound (incidents, services, alert events, metrics) returns a
-  `{items, total, limit, offset}` page (`limit` capped at 200) instead of
-  an unbounded bare array. Config objects whose cardinality is inherently
-  small and human-bounded (orgs a user belongs to, org members, alert
-  rules) intentionally keep returning a bare list.
-- **Rate limiting** — triage and postmortem generation (the two endpoints
-  that call the paid Claude API) share one Redis-backed, per-org,
-  per-minute budget (`ANTHROPIC_RATE_LIMIT_PER_MINUTE`), so a bug or an
-  abusive client can't run up unbounded API spend. A 429 includes
-  `Retry-After`.
-- **Claude request timeout + retries** — the Anthropic SDK's own default
-  read timeout is 600s, which would hold a DB session open for minutes on
-  a stalled call; `ANTHROPIC_REQUEST_TIMEOUT_SECONDS` (default 30) and
-  `ANTHROPIC_MAX_RETRIES` (default 2, the SDK's own default made explicit)
-  bound that.
-- **Prod secret guard** — `Settings` refuses to construct when
-  `APP_ENV=prod` and `SECURITY_JWT_SECRET` is still the default or the
-  `.env.example` placeholder (or under 32 chars), so a deployment can't
-  silently go live signing tokens with a secret anyone could read in this
-  repo.
+| Phase | Area | Status |
+| --- | --- | --- |
+| Phase 1 | Core backend (auth through incidents) | Done |
+| Phase 2 | AI layer (Claude triage, MCP, RAG) | In progress: triage, postmortems, and the MCP server are shipped; RAG is next |
+| Phase 3 | Frontend | Not started |
+| Phase 4 | Production infrastructure (AWS) | In progress: pagination, rate limiting, Claude timeouts/retries, and the prod secret guard are shipped; deployment and observability are next |
+| Phase 5 | Polish, docs, demo | Not started |
 
-Not yet done: an actual deployment target (there's a `Dockerfile`, but
-nothing is live anywhere), error tracking (Sentry or equivalent), and
-request correlation IDs.
+See [docs/adr/](docs/adr) for the architecture decision records behind these choices.
