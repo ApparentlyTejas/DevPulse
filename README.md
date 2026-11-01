@@ -53,6 +53,39 @@ flowchart LR
 
 The MCP server deliberately holds no database connection of its own. Every tool call it makes is a plain HTTP request against the already-running API, so it inherits the exact same org-membership authorization as any other client instead of duplicating that logic in a second place.
 
+Inside the API, each domain (`app/modules/*`) is a self-contained router → service → models slice; the only module every other one depends on is `auth` (for `CurrentUser`), and `ai` is the one exception that reaches sideways into `incidents.service` to read the facts it triages or summarizes:
+
+```mermaid
+flowchart TB
+  AUTH["modules/auth/<br/>router, service, security"]
+
+  subgraph Domain["Sibling domain modules"]
+    SVC["modules/services/"]
+    MET["modules/metrics/"]
+    ALR["modules/alerts/"]
+    INC["modules/incidents/"]
+  end
+
+  SVC --> AUTH
+  MET --> AUTH
+  ALR --> AUTH
+  INC --> AUTH
+
+  AI["modules/ai/<br/>router, service, client"] --> AUTH
+  AI -->|reads incident facts| INC
+  AI --> CLAUDE[("Anthropic API")]
+
+  MCPC["mcp_server/client.py"] -->|plain HTTPS, bearer token, no DB access| INC
+  MCPC -->|plain HTTPS| SVC
+
+  AUTH --> DB[("PostgreSQL")]
+  SVC --> DB
+  MET --> DB
+  ALR --> DB
+  INC --> DB
+  AI --> DB
+```
+
 ## Features
 
 - Org-scoped auth with argon2id password hashing and JWT access tokens.
