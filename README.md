@@ -156,6 +156,20 @@ DEVPULSE_MCP_ORG_ID=<the org to scope every call to> \
 uv run devpulse-mcp
 ```
 
+## Benchmarks
+
+Reproducible locally with `backend/scripts/run_bench.sh` (seeds an org with 200 incidents, then runs [ApacheBench](https://httpd.apache.org/docs/2.4/programs/ab.html) against three endpoints that exercise different layers of the stack). Measured against the `make up` Docker stack (API + Postgres + Redis, no external AI calls) on an Apple M1, 8 cores:
+
+| Endpoint | What it exercises | Requests/sec | Median | p95 | p99 |
+|---|---|---|---|---|---|
+| `GET /organizations/{org_id}/incidents` (c=10, n=500) | JWT auth, org-scoped paginated query | 339 | 25ms | 55ms | 114ms |
+| `POST /organizations/{org_id}/incidents` (c=10, n=300) | JWT auth, org-scoped insert | 350 | 25ms | 40ms | 107ms |
+| `POST /auth/login` (c=10, n=200) | argon2id password verification | 15 | 587ms | 1637ms | 1995ms |
+
+The login endpoint is ~25x slower than the authenticated CRUD paths, deliberately: argon2id's memory-hard hashing is the whole point of that cost, not a bug to optimize away. The Claude-backed triage and postmortem endpoints are excluded from this benchmark because they call a real, metered Anthropic API; the rate limiter and timeout/retry settings described below exist precisely because that cost isn't something to load-test casually.
+
+These numbers describe this machine and this seed, not a production SLA; rerun `run_bench.sh` on your own hardware before citing a number elsewhere.
+
 ## What's technically interesting here
 
 - **Forcing structure out of an LLM, not parsing it out.** Both triage and postmortem generation use Anthropic's tool-call mechanism to force Claude into a fixed response shape (`summary`, `suggested_severity`, `confidence` for triage) instead of asking for JSON in a prompt and hoping. That removes an entire class of "the model added a markdown fence around its JSON" bugs that string-parsed LLM integrations tend to hit in production.
