@@ -1,6 +1,8 @@
 # DevPulse
 
-DevPulse is an engineering-ops backend that tracks services, metrics, alerts, and incidents for an organization, then hands that incident data to Claude for triage and postmortem drafting, both through a REST API and through a native MCP server so any MCP client (Claude Desktop included) can query and act on the same data. It is not a demo wrapped around a chatbot: it has org-scoped auth, Redis-backed rate limiting on every paid AI call, pagination on every unbounded list endpoint, a prod-safe secret guard, and a test suite that spins up real Postgres and Redis containers instead of mocking the database away.
+DevPulse is a backend that tracks services, metrics, alerts, and incidents for an organization, and lets Claude triage and draft postmortems for those incidents, either over a normal REST API or over a native MCP server, so any MCP client (Claude Desktop included) can list, create, and act on the same incidents directly.
+
+It is built like something meant to run, not a demo wrapped around a chatbot: org-scoped auth, Redis-backed rate limiting on every paid AI call, pagination on every unbounded list endpoint, a prod-safe secret guard, and a test suite that runs against real Postgres and Redis containers instead of mocking the database away.
 
 ![CI](https://github.com/ApparentlyTejas/DevPulse/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
