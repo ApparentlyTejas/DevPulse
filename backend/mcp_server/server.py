@@ -38,7 +38,11 @@ async def get_incident(incident_id: str) -> dict[str, Any]:
     return await get_client().get_incident(UUID(incident_id))
 
 
-@mcp.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False))
+@mcp.tool(
+    annotations=ToolAnnotations(
+        read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False
+    )
+)
 async def create_incident(
     title: str,
     severity: str,
@@ -59,7 +63,11 @@ async def create_incident(
     )
 
 
-@mcp.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False))
+@mcp.tool(
+    annotations=ToolAnnotations(
+        read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False
+    )
+)
 async def update_incident_status(incident_id: str, status: str) -> dict[str, Any]:
     """Advance an incident's status.
 
@@ -71,7 +79,11 @@ async def update_incident_status(incident_id: str, status: str) -> dict[str, Any
     return await get_client().update_incident_status(UUID(incident_id), status)
 
 
-@mcp.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False))
+@mcp.tool(
+    annotations=ToolAnnotations(
+        read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False
+    )
+)
 async def triage_incident(incident_id: str) -> dict[str, Any]:
     """Ask Claude to triage an incident: a summary, a suggested severity,
     and a confidence score, based on its title, description, status, and
@@ -86,7 +98,11 @@ async def list_incident_triages(incident_id: str) -> list[dict[str, Any]]:
     return await get_client().list_incident_triages(UUID(incident_id))
 
 
-@mcp.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False))
+@mcp.tool(
+    annotations=ToolAnnotations(
+        read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False
+    )
+)
 async def generate_postmortem(incident_id: str) -> dict[str, Any]:
     """Generate a postmortem for an incident, grounded strictly in its
     recorded facts: title, severity, status, open/resolve timestamps, linked
