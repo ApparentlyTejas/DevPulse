@@ -17,25 +17,28 @@ from typing import Any
 from uuid import UUID
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
 from mcp_server.client import get_client
 
 mcp = FastMCP("devpulse")
 
+RO = ToolAnnotations(read_only_hint=True, open_world_hint=False)
 
-@mcp.tool()
+
+@mcp.tool(annotations=RO)
 async def list_incidents() -> list[dict[str, Any]]:
     """List every incident in the configured organization, newest first."""
     return await get_client().list_incidents()
 
 
-@mcp.tool()
+@mcp.tool(annotations=RO)
 async def get_incident(incident_id: str) -> dict[str, Any]:
     """Get one incident's full detail by its id."""
     return await get_client().get_incident(UUID(incident_id))
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False))
 async def create_incident(
     title: str,
     severity: str,
@@ -56,7 +59,7 @@ async def create_incident(
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False))
 async def update_incident_status(incident_id: str, status: str) -> dict[str, Any]:
     """Advance an incident's status.
 
@@ -68,7 +71,7 @@ async def update_incident_status(incident_id: str, status: str) -> dict[str, Any
     return await get_client().update_incident_status(UUID(incident_id), status)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False))
 async def triage_incident(incident_id: str) -> dict[str, Any]:
     """Ask Claude to triage an incident: a summary, a suggested severity,
     and a confidence score, based on its title, description, status, and
@@ -77,13 +80,13 @@ async def triage_incident(incident_id: str) -> dict[str, Any]:
     return await get_client().triage_incident(UUID(incident_id))
 
 
-@mcp.tool()
+@mcp.tool(annotations=RO)
 async def list_incident_triages(incident_id: str) -> list[dict[str, Any]]:
     """List an incident's past triage runs, newest first."""
     return await get_client().list_incident_triages(UUID(incident_id))
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False))
 async def generate_postmortem(incident_id: str) -> dict[str, Any]:
     """Generate a postmortem for an incident, grounded strictly in its
     recorded facts: title, severity, status, open/resolve timestamps, linked
@@ -95,13 +98,13 @@ async def generate_postmortem(incident_id: str) -> dict[str, Any]:
     return await get_client().generate_postmortem(UUID(incident_id))
 
 
-@mcp.tool()
+@mcp.tool(annotations=RO)
 async def list_postmortems(incident_id: str) -> list[dict[str, Any]]:
     """List an incident's past generated postmortems, newest first."""
     return await get_client().list_postmortems(UUID(incident_id))
 
 
-@mcp.tool()
+@mcp.tool(annotations=RO)
 async def list_services() -> list[dict[str, Any]]:
     """List every service in the configured organization."""
     return await get_client().list_services()
