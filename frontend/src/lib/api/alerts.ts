@@ -92,3 +92,69 @@ export async function deleteAlertRule(
     method: "DELETE",
   });
 }
+
+// ---------------------------------------------------------------------------
+// Alert events (Task 8)
+// ---------------------------------------------------------------------------
+
+export type AlertEventStatus = "open" | "acknowledged" | "resolved";
+
+// Mirrors `AlertEventOut` in `backend/app/modules/alerts/schemas.py`.
+export interface AlertEvent {
+  id: string;
+  org_id: string;
+  service_id: string;
+  rule_id: string | null;
+  severity: AlertSeverity;
+  title: string;
+  message: string | null;
+  alert_status: AlertEventStatus;
+  acknowledged_at: string | null;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Mirrors `app/core/pagination.py`'s `Page` envelope, already used by
+// `listServices` in `./services.ts`.
+export interface Page<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+function eventsPath(orgId: string, serviceId: string): string {
+  return `/organizations/${orgId}/services/${serviceId}/alerts/events`;
+}
+
+export async function listAlertEvents(
+  orgId: string,
+  serviceId: string,
+  page: { limit: number; offset: number },
+): Promise<Page<AlertEvent>> {
+  const query = new URLSearchParams({
+    limit: String(page.limit),
+    offset: String(page.offset),
+  });
+  return apiRequest<Page<AlertEvent>>(`${eventsPath(orgId, serviceId)}?${query.toString()}`);
+}
+
+// Mirrors `UpdateAlertEventStatusRequest`: the only thing updatable on an
+// event. `status` is typed as `string` per the task's interface contract,
+// but callers should only ever pass an `AlertEventStatus` value -- the
+// backend enforces valid transitions server-side (see
+// `_VALID_TRANSITIONS`/`InvalidStatusTransitionError` in
+// `backend/app/modules/alerts/service.py`): open -> acknowledged/resolved,
+// acknowledged -> resolved, resolved -> nothing.
+export async function updateAlertEventStatus(
+  orgId: string,
+  serviceId: string,
+  eventId: string,
+  status: string,
+): Promise<AlertEvent> {
+  return apiRequest<AlertEvent>(`${eventsPath(orgId, serviceId)}/${eventId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ alert_status: status }),
+  });
+}
