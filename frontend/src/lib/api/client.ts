@@ -17,13 +17,27 @@ const REFRESH_PATH = "/auth/refresh";
 export class ApiError extends Error {
   status: number;
   detail: string;
+  // Only set when the response carried a `Retry-After` header (the AI
+  // endpoints' 429s do, via `rate_limit_by_org`). `undefined` for every
+  // other error, including other 429s without the header.
+  retryAfterSeconds?: number;
 
-  constructor(status: number, detail: string) {
+  constructor(status: number, detail: string, retryAfterSeconds?: number) {
     super(detail);
     this.name = "ApiError";
     this.status = status;
     this.detail = detail;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
+}
+
+function readRetryAfterSeconds(response: Response): number | undefined {
+  const header = response.headers.get("Retry-After");
+  if (header === null) {
+    return undefined;
+  }
+  const seconds = Number(header);
+  return Number.isNaN(seconds) ? undefined : seconds;
 }
 
 let tokenGetter: () => string | null = () => null;
@@ -98,12 +112,16 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
 
     if (!response.ok && response.status === 401) {
       unauthorizedHandler();
-      throw new ApiError(401, await readErrorDetail(response));
+      throw new ApiError(401, await readErrorDetail(response), readRetryAfterSeconds(response));
     }
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, await readErrorDetail(response));
+    throw new ApiError(
+      response.status,
+      await readErrorDetail(response),
+      readRetryAfterSeconds(response),
+    );
   }
 
   return readBody<T>(response);

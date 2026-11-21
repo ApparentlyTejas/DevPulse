@@ -92,6 +92,34 @@ describe("apiRequest", () => {
     expect(unauthorizedHandler).toHaveBeenCalledTimes(1);
   });
 
+  test("populates retryAfterSeconds from a Retry-After header on a 429", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ detail: "Rate limit exceeded" }), {
+        status: 429,
+        headers: { "Content-Type": "application/json", "Retry-After": "30" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiRequest("/organizations/org-1/incidents/inc-1/triage")).rejects.toMatchObject(
+      {
+        status: 429,
+        detail: "Rate limit exceeded",
+        retryAfterSeconds: 30,
+      },
+    );
+  });
+
+  test("leaves retryAfterSeconds undefined when there is no Retry-After header", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ detail: "not found" }, 404));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiRequest("/missing")).rejects.toMatchObject({
+      status: 404,
+      retryAfterSeconds: undefined,
+    });
+  });
+
   test("does not attempt a refresh on a non-401 error", async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ detail: "boom" }, 500));
     vi.stubGlobal("fetch", fetchMock);

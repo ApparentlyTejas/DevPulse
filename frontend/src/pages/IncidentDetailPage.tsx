@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { IncidentFactsRail } from "../components/IncidentFactsRail";
+import { TriageHistory } from "../components/TriageHistory";
 import { ApiError } from "../lib/api/client";
 import { getIncident, updateIncidentStatus, type IncidentStatus } from "../lib/api/incidents";
 import { useOrg } from "../lib/org-context";
@@ -96,9 +97,11 @@ export function IncidentDetailPage() {
             </p>
           </div>
 
-          {/* Triage history (Task 12) and postmortem (Task 13) mount here. */}
+          <TriageHistory orgId={selectedOrgId} incidentId={incidentId} />
+
+          {/* Postmortem (Task 13) mounts here. */}
           <div className="rounded border border-dashed border-hairline p-4 text-sm text-ink/60">
-            Triage and postmortem coming soon.
+            Postmortem coming soon.
           </div>
         </div>
 
