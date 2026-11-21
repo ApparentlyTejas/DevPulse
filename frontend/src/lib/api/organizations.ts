@@ -6,6 +6,7 @@
  */
 
 import { apiRequest } from "./client";
+import { deriveSlug as deriveSlugShared } from "../slug";
 
 export interface Org {
   id: string;
@@ -29,28 +30,13 @@ function toOrg(dto: OrgResponse): Org {
  * request body: the backend's `CreateOrgRequest.slug` is required and must
  * match `^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$` (lowercase letters,
  * digits, and internal hyphens only, no leading/trailing hyphen).
+ *
+ * Shared with `services.ts` (same backend slug pattern) via `../slug`;
+ * re-exported here so existing imports of `deriveSlug` from this module
+ * keep working.
  */
 export function deriveSlug(name: string): string {
-  const slug = name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+/, "")
-    .replace(/-+$/, "")
-    // The backend's `CreateOrgRequest.slug` has `max_length=64`; a long,
-    // punctuation-free name (the backend allows names up to 120 chars)
-    // would otherwise produce a slug the backend rejects with a 422.
-    // Truncating can expose a trailing hyphen (e.g. "...word-rest" cut
-    // mid-word is fine, but a cut right at a hyphen boundary isn't), so
-    // strip trailing hyphens again after truncating.
-    .slice(0, 64)
-    .replace(/-+$/, "");
-  // A name made entirely of punctuation/non-ASCII (e.g. "---" or "日本語")
-  // strips down to nothing, which the backend's pattern rejects. Fall back
-  // to a fixed, always-valid slug rather than sending an empty string; a
-  // collision with an existing "org" slug surfaces as the same 409 any
-  // other slug collision does.
-  return slug.length > 0 ? slug : "org";
+  return deriveSlugShared(name, "org");
 }
 
 export async function listOrganizations(): Promise<Org[]> {

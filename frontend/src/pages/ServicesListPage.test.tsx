@@ -1,0 +1,124 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { ApiError } from "../lib/api/client";
+import { ServicesListPage } from "./ServicesListPage";
+
+vi.mock("../lib/org-context", () => ({
+  useOrg: vi.fn(),
+}));
+vi.mock("../lib/api/services", () => ({
+  listServices: vi.fn(),
+  createService: vi.fn(),
+  updateService: vi.fn(),
+  deleteService: vi.fn(),
+}));
+
+import { useOrg } from "../lib/org-context";
+import { deleteService, listServices } from "../lib/api/services";
+
+function renderPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <ServicesListPage />
+    </QueryClientProvider>,
+  );
+}
+
+function mockPage(items: { id: string; name: string; description: string | null }[]) {
+  return { items, total: items.length, limit: 20, offset: 0 };
+}
+
+describe("ServicesListPage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useOrg).mockReturnValue({
+      orgs: [{ id: "org-1", name: "Acme" }],
+      selectedOrgId: "org-1",
+      selectOrg: vi.fn(),
+      createOrg: vi.fn(),
+      isLoading: false,
+    });
+  });
+
+  test("renders a row per service returned by the API", async () => {
+    vi.mocked(listServices).mockResolvedValue(
+      mockPage([
+        { id: "svc-1", name: "API", description: "The main API" },
+        { id: "svc-2", name: "Worker", description: null },
+      ]),
+    );
+
+    renderPage();
+
+    expect(await screen.findByText("API")).toBeTruthy();
+    expect(screen.getByText("The main API")).toBeTruthy();
+    expect(screen.getByText("Worker")).toBeTruthy();
+    expect(listServices).toHaveBeenCalledWith("org-1", { limit: 20, offset: 0 });
+  });
+
+  test("shows the empty state when total is 0", async () => {
+    vi.mocked(listServices).mockResolvedValue(mockPage([]));
+
+    renderPage();
+
+    expect(await screen.findByText(/no services yet/i)).toBeTruthy();
+  });
+
+  test("shows an error state and a retry action when the request fails", async () => {
+    vi.mocked(listServices).mockRejectedValueOnce(new ApiError(500, "boom"));
+    vi.mocked(listServices).mockResolvedValueOnce(
+      mockPage([{ id: "svc-1", name: "API", description: null }]),
+    );
+
+    renderPage();
+
+    expect(await screen.findByText(/failed to load services/i)).toBeTruthy();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /retry/i }));
+
+    expect(await screen.findByText("API")).toBeTruthy();
+  });
+
+  test("removes a service from the list after a successful delete", async () => {
+    vi.mocked(listServices).mockResolvedValueOnce(
+      mockPage([{ id: "svc-1", name: "API", description: null }]),
+    );
+    vi.mocked(deleteService).mockResolvedValue(undefined);
+    vi.mocked(listServices).mockResolvedValueOnce(mockPage([]));
+
+    renderPage();
+
+    expect(await screen.findByText("API")).toBeTruthy();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /delete/i }));
+
+    await waitFor(() => expect(deleteService).toHaveBeenCalledWith("org-1", "svc-1"));
+    expect(await screen.findByText(/no services yet/i)).toBeTruthy();
+  });
+
+  test("shows a 404 error and refetches the list when deleting an already-gone service", async () => {
+    vi.mocked(listServices).mockResolvedValueOnce(
+      mockPage([{ id: "svc-1", name: "API", description: null }]),
+    );
+    vi.mocked(deleteService).mockRejectedValue(new ApiError(404, "Service not found"));
+    vi.mocked(listServices).mockResolvedValueOnce(mockPage([]));
+
+    renderPage();
+
+    expect(await screen.findByText("API")).toBeTruthy();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /delete/i }));
+
+    expect(await screen.findByText("Service not found")).toBeTruthy();
+    await waitFor(() => expect(listServices).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(/no services yet/i)).toBeTruthy();
+  });
+});

@@ -2,11 +2,12 @@ import { createBrowserRouter } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { ServicesListPage } from "./pages/ServicesListPage";
 
 // `/login` and `/register` are public; everything else renders inside
 // `AppLayout`, which redirects to `/login` when there's no authenticated
-// user. Later tasks each add their own child route here (e.g. `/incidents`,
-// `/services`) -- for now there's just a placeholder landing page.
+// user. Later tasks each add their own child route here (e.g. `/incidents`)
+// -- for now there's a placeholder landing page plus `/services`.
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
   { path: "/register", element: <RegisterPage /> },
@@ -18,6 +19,7 @@ export const router = createBrowserRouter([
         index: true,
         element: <div className="text-sm text-ink">Welcome to DevPulse.</div>,
       },
+      { path: "services", element: <ServicesListPage /> },
     ],
   },
 ]);
