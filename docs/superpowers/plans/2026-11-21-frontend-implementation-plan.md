@@ -24,9 +24,9 @@
 ## Review Focus
 
 - Access/refresh token both invalid or expired mid-session: must redirect to `/login` once, not loop or throw an unhandled error. (Task 3)
-- Incident list filtered by a status/severity combination with zero matches: must render the empty state, not a broken pagination footer claiming pages that don't exist. (Task 11, Task 1)
-- Triage or postmortem generation hitting the backend's 429 rate limit: must show the `Retry-After`-aware message, not a generic "something went wrong" toast. (Task 13, Task 14)
-- Acting on a resource (incident, service, alert rule) that returns 404 because it was already deleted by someone else since the list was fetched: must surface the error and refresh the list, not crash the page. (Task 6, Task 11)
+- Incident list filtered by a status/severity combination with zero matches: must render the empty state, not a broken pagination footer claiming pages that don't exist. (Task 10, Task 1)
+- Triage or postmortem generation hitting the backend's 429 rate limit: must show the `Retry-After`-aware message, not a generic "something went wrong" toast. (Task 12, Task 13)
+- Acting on a resource (incident, service, alert rule) that returns 404 because it was already deleted by someone else since the list was fetched: must surface the error and refresh the list, not crash the page. (Task 5, Task 10)
 - A brand-new user with zero organizations: every page that needs a selected org must handle "no org selected" without firing a request with a missing/undefined `org_id`. (Task 4)
 
 ---
