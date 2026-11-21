@@ -1,10 +1,20 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { RouterProvider } from "react-router-dom";
+import { AuthProvider } from "./lib/auth-context";
+import { OrgProvider } from "./lib/org-context";
+import { router } from "./routes";
+
+const queryClient = new QueryClient();
+
 function App() {
   return (
-    <div className="min-h-screen bg-bg font-sans text-ink">
-      <header className="border-b border-hairline px-6 py-4">
-        <h1 className="text-lg font-medium">DevPulse</h1>
-      </header>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <OrgProvider>
+          <RouterProvider router={router} />
+        </OrgProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
