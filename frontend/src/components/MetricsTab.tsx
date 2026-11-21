@@ -1,6 +1,7 @@
+import { Dialog } from "@base-ui/react/dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { createMetric, listMetrics } from "../lib/api/metrics";
@@ -39,26 +40,13 @@ function toRecordedAt(localDateTime: string): string | undefined {
   return date.toISOString();
 }
 
-export interface MetricsTabProps {
-  orgId: string;
-  serviceId: string;
+interface MetricFormDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (values: FormValues) => Promise<void>;
 }
 
-export function MetricsTab({ orgId, serviceId }: MetricsTabProps) {
-  const queryClient = useQueryClient();
-  const [offset, setOffset] = useState(0);
-
-  const queryKey = ["metrics", orgId, serviceId, PAGE_LIMIT, offset];
-  const {
-    data,
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery({
-    queryKey,
-    queryFn: () => listMetrics(orgId, serviceId, { limit: PAGE_LIMIT, offset }),
-  });
-
+function MetricFormDialog({ open, onOpenChange, onSubmit }: MetricFormDialogProps) {
   const {
     register,
     handleSubmit,
@@ -70,52 +58,46 @@ export function MetricsTab({ orgId, serviceId }: MetricsTabProps) {
     defaultValues: EMPTY_VALUES,
   });
 
-  const createMutation = useMutation({
-    mutationFn: (values: FormValues) =>
-      createMetric(orgId, serviceId, {
-        metric_name: values.metric_name,
-        value: values.value,
-        unit: values.unit ? values.unit : undefined,
-        recorded_at: toRecordedAt(values.recorded_at ?? ""),
-      }),
-    onSuccess: () => {
+  // Re-seed the form whenever the dialog opens, same as
+  // `AlertRuleFormDialog`: this dialog instance is reused across repeated
+  // opens.
+  useEffect(() => {
+    if (open) {
       reset(EMPTY_VALUES);
-      void queryClient.invalidateQueries({ queryKey: ["metrics", orgId, serviceId] });
-    },
-    onError: (err) => {
-      setError("metric_name", {
-        message: err instanceof ApiError ? err.detail : "Something went wrong. Please try again.",
-      });
-    },
-  });
+    }
+  }, [open, reset]);
 
   async function submit(values: FormValues) {
     try {
-      await createMutation.mutateAsync(values);
-    } catch {
-      // Already surfaced via `createMutation`'s `onError` (sets a field
-      // error on the form); nothing further to do here.
+      await onSubmit(values);
+      onOpenChange(false);
+    } catch (err) {
+      setError("metric_name", {
+        message: err instanceof ApiError ? err.detail : "Something went wrong. Please try again.",
+      });
     }
   }
 
-  const items = data?.items ?? [];
-  const total = data?.total ?? 0;
-  const hasPrevious = offset > 0;
-  const hasNext = offset + PAGE_LIMIT < total;
-
   return (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <h3 className="text-sm font-medium text-ink">Record a snapshot</h3>
-        <form onSubmit={handleSubmit(submit)} noValidate className="space-y-3">
-          <div className="flex flex-wrap gap-3">
+    <Dialog.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        onOpenChange(nextOpen);
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 bg-bg/80" />
+        <Dialog.Popup className="fixed left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded border border-hairline bg-surface p-6 font-sans text-ink">
+          <Dialog.Title className="text-lg font-medium">Record a snapshot</Dialog.Title>
+
+          <form onSubmit={handleSubmit(submit)} noValidate className="mt-4 space-y-3">
             <div className="space-y-1">
               <label htmlFor="metric-name" className="block text-sm">
                 Metric name
               </label>
               <input
                 id="metric-name"
-                className="rounded border border-hairline bg-bg px-3 py-2 text-ink"
+                className="w-full rounded border border-hairline bg-bg px-3 py-2 text-ink"
                 {...register("metric_name")}
               />
               {errors.metric_name && (
@@ -131,7 +113,7 @@ export function MetricsTab({ orgId, serviceId }: MetricsTabProps) {
                 id="metric-value"
                 type="number"
                 step="any"
-                className="w-32 rounded border border-hairline bg-bg px-3 py-2 font-mono text-ink"
+                className="w-full rounded border border-hairline bg-bg px-3 py-2 font-mono text-ink"
                 {...register("value", { valueAsNumber: true })}
               />
               {errors.value && <p className="text-sm text-critical">{errors.value.message}</p>}
@@ -143,7 +125,7 @@ export function MetricsTab({ orgId, serviceId }: MetricsTabProps) {
               </label>
               <input
                 id="metric-unit"
-                className="w-32 rounded border border-hairline bg-bg px-3 py-2 text-ink"
+                className="w-full rounded border border-hairline bg-bg px-3 py-2 text-ink"
                 {...register("unit")}
               />
               {errors.unit && <p className="text-sm text-critical">{errors.unit.message}</p>}
@@ -156,26 +138,96 @@ export function MetricsTab({ orgId, serviceId }: MetricsTabProps) {
               <input
                 id="metric-recorded-at"
                 type="datetime-local"
-                className="rounded border border-hairline bg-bg px-3 py-2 font-mono text-ink"
+                className="w-full rounded border border-hairline bg-bg px-3 py-2 font-mono text-ink"
                 {...register("recorded_at")}
               />
               <p className="text-xs text-ink/60">Leave blank to record it as now.</p>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="rounded bg-accent-blue px-3 py-2 text-sm text-ink disabled:opacity-60"
-          >
-            Record snapshot
-          </button>
-        </form>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="rounded border border-hairline px-3 py-2 text-ink"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="rounded bg-accent-blue px-3 py-2 text-ink disabled:opacity-60"
+              >
+                Save snapshot
+              </button>
+            </div>
+          </form>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+export interface MetricsTabProps {
+  orgId: string;
+  serviceId: string;
+}
+
+export function MetricsTab({ orgId, serviceId }: MetricsTabProps) {
+  const queryClient = useQueryClient();
+  const [offset, setOffset] = useState(0);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const queryKey = ["metrics", orgId, serviceId, PAGE_LIMIT, offset];
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey,
+    queryFn: () => listMetrics(orgId, serviceId, { limit: PAGE_LIMIT, offset }),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (values: FormValues) =>
+      createMetric(orgId, serviceId, {
+        metric_name: values.metric_name,
+        value: values.value,
+        unit: values.unit ? values.unit : undefined,
+        recorded_at: toRecordedAt(values.recorded_at ?? ""),
+      }),
+    onSuccess: () => {
+      // Snapshots are returned newest-first, so a freshly recorded one
+      // belongs on page 1 -- reset pagination so it's visible instead of
+      // silently landing off the current page.
+      setOffset(0);
+      void queryClient.invalidateQueries({ queryKey: ["metrics", orgId, serviceId] });
+    },
+  });
+
+  async function handleCreate(values: FormValues) {
+    await createMutation.mutateAsync(values);
+  }
+
+  const items = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const hasPrevious = offset > 0;
+  const hasNext = offset + PAGE_LIMIT < total;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-ink">Metric snapshots</h3>
+        <button
+          type="button"
+          onClick={() => setDialogOpen(true)}
+          className="rounded bg-accent-blue px-3 py-2 text-sm text-ink"
+        >
+          Record snapshot
+        </button>
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-sm font-medium text-ink">Metric snapshots</h3>
-
         {isLoading ? (
           <p className="text-sm text-ink">Loading metrics...</p>
         ) : isError ? (
@@ -240,6 +292,12 @@ export function MetricsTab({ orgId, serviceId }: MetricsTabProps) {
           </>
         )}
       </div>
+
+      <MetricFormDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSubmit={handleCreate}
+      />
     </div>
   );
 }
