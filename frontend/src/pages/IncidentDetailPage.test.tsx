@@ -17,11 +17,13 @@ vi.mock("../lib/api/incidents", () => ({
 vi.mock("../lib/api/ai", () => ({
   listTriages: vi.fn(),
   runTriage: vi.fn(),
+  listPostmortems: vi.fn(),
+  generatePostmortem: vi.fn(),
 }));
 
 import { useOrg } from "../lib/org-context";
 import { getIncident, updateIncidentStatus } from "../lib/api/incidents";
-import { listTriages } from "../lib/api/ai";
+import { listTriages, listPostmortems } from "../lib/api/ai";
 
 function makeIncident(overrides: Partial<Incident> = {}): Incident {
   return {
@@ -67,6 +69,7 @@ describe("IncidentDetailPage", () => {
       isLoading: false,
     });
     vi.mocked(listTriages).mockResolvedValue([]);
+    vi.mocked(listPostmortems).mockResolvedValue([]);
   });
 
   test("renders the incident's title, severity, and status", async () => {

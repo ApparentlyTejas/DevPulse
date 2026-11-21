@@ -38,3 +38,34 @@ export async function listTriages(orgId: string, incidentId: string): Promise<In
 export async function runTriage(orgId: string, incidentId: string): Promise<IncidentTriage> {
   return apiRequest<IncidentTriage>(triagePath(orgId, incidentId), { method: "POST" });
 }
+
+/**
+ * Mirrors `PostmortemOut` in `backend/app/modules/ai/schemas.py`. `content`
+ * is markdown (the generation prompt in `app/modules/ai/service.py`'s
+ * `_build_postmortem_prompt` instructs Claude to write it with
+ * `## Summary`-style sections), not plain text or HTML.
+ *
+ * Same bare-array convention and shared per-org AI rate limit (429) as
+ * triage above; `generatePostmortem` can additionally 502 if the Claude
+ * call fails (`AITriageError` -> `detail=f"Postmortem generation failed:
+ * {exc}"`).
+ */
+export interface Postmortem {
+  id: string;
+  incident_id: string;
+  content: string;
+  model: string;
+  created_at: string;
+}
+
+function postmortemPath(orgId: string, incidentId: string): string {
+  return `/organizations/${orgId}/incidents/${incidentId}/postmortem`;
+}
+
+export async function listPostmortems(orgId: string, incidentId: string): Promise<Postmortem[]> {
+  return apiRequest<Postmortem[]>(postmortemPath(orgId, incidentId));
+}
+
+export async function generatePostmortem(orgId: string, incidentId: string): Promise<Postmortem> {
+  return apiRequest<Postmortem>(postmortemPath(orgId, incidentId), { method: "POST" });
+}
