@@ -121,6 +121,16 @@ export function ServiceFormDialog({
               {errors.name && <p className="text-sm text-critical">{errors.name.message}</p>}
             </div>
 
+            {/*
+              Known limitation: once `description`/`repository_url` are set,
+              they can't be cleared back to empty through this form. The
+              backend (`backend/app/modules/services/service.py`'s
+              `update_service`) treats an omitted field and an explicit
+              `null` identically (`if description is not None: ...`), so
+              there's no payload this form can send that means "clear this".
+              Fixing that would require a backend schema change, which is
+              out of scope here; this is an accepted limitation, not a bug.
+            */}
             <div className="space-y-1">
               <label htmlFor="service-description" className="block text-sm">
                 Description
