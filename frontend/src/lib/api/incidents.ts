@@ -121,3 +121,21 @@ export async function deleteIncident(orgId: string, incidentId: string): Promise
     method: "DELETE",
   });
 }
+
+export async function getIncident(orgId: string, incidentId: string): Promise<Incident> {
+  return apiRequest<Incident>(`${incidentsPath(orgId)}/${incidentId}`);
+}
+
+// Mirrors `UpdateIncidentStatusRequest`: the body field is `incident_status`,
+// not `status` -- same naming split as the list endpoint's query param (see
+// module docstring above), just on the request body this time.
+export async function updateIncidentStatus(
+  orgId: string,
+  incidentId: string,
+  status: IncidentStatus,
+): Promise<Incident> {
+  return apiRequest<Incident>(`${incidentsPath(orgId)}/${incidentId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ incident_status: status }),
+  });
+}
