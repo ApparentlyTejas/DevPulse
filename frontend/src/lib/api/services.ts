@@ -130,3 +130,10 @@ export async function deleteService(orgId: string, serviceId: string): Promise<v
     method: "DELETE",
   });
 }
+
+export async function getService(orgId: string, serviceId: string): Promise<Service> {
+  const dto = await apiRequest<ServiceResponse>(
+    `/organizations/${orgId}/services/${serviceId}`,
+  );
+  return toService(dto);
+}

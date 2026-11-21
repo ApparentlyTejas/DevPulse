@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { ServiceDetailPage } from "./pages/ServiceDetailPage";
 import { ServicesListPage } from "./pages/ServicesListPage";
 
 // `/login` and `/register` are public; everything else renders inside
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
         element: <div className="text-sm text-ink">Welcome to DevPulse.</div>,
       },
       { path: "services", element: <ServicesListPage /> },
+      { path: "services/:id", element: <ServiceDetailPage /> },
     ],
   },
 ]);

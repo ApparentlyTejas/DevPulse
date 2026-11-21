@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { setTokenGetter, setUnauthorizedHandler } from "./client";
-import { createService, deleteService, listServices, updateService } from "./services";
+import { createService, deleteService, getService, listServices, updateService } from "./services";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(body === undefined ? null : JSON.stringify(body), {
@@ -137,6 +137,55 @@ describe("services api", () => {
       slug: "my-service",
       description: "desc",
       repository_url: "https://example.com/repo",
+    });
+  });
+
+  test("getService fetches a single service and maps the full record", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        id: "svc-1",
+        org_id: "org-1",
+        name: "API",
+        slug: "api",
+        description: "The main API",
+        status: "healthy",
+        repository_url: "https://example.com/repo",
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-02T00:00:00Z",
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const service = await getService("org-1", "svc-1");
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://localhost:8000/api/v1/organizations/org-1/services/svc-1");
+    expect(service).toEqual({
+      id: "svc-1",
+      org_id: "org-1",
+      name: "API",
+      slug: "api",
+      description: "The main API",
+      status: "healthy",
+      repository_url: "https://example.com/repo",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-02T00:00:00Z",
+    });
+  });
+
+  test("getService surfaces a 404 as an ApiError", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ detail: "Service not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getService("org-1", "svc-1")).rejects.toMatchObject({
+      status: 404,
+      detail: "Service not found",
     });
   });
 
