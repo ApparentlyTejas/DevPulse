@@ -82,12 +82,11 @@ describe("AppLayout", () => {
     renderAppLayout();
 
     expect(screen.getByText("Dashboard")).toBeTruthy();
-    expect(screen.getByText("Acme")).toBeTruthy();
-    expect(screen.getByText("Globex")).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: /organization/i }).textContent).toContain("Acme");
 
-    const select = screen.getByLabelText(/organization/i);
     const user = userEvent.setup();
-    await user.selectOptions(select, "org-2");
+    await user.click(screen.getByRole("combobox", { name: /organization/i }));
+    await user.click(await screen.findByRole("option", { name: "Globex" }));
 
     expect(selectOrg).toHaveBeenCalledWith("org-2");
   });

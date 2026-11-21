@@ -3,6 +3,13 @@ import { Navigate, Outlet } from "react-router-dom";
 import { ApiError } from "../lib/api/client";
 import { useAuth } from "../lib/auth-context";
 import { useOrg } from "../lib/org-context";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 export function AppLayout() {
   const { user } = useAuth();
@@ -30,18 +37,30 @@ export function AppLayout() {
         <h1 className="text-lg font-medium">DevPulse</h1>
         <label className="flex items-center gap-2 text-sm">
           Organization
-          <select
-            aria-label="Organization"
+          <Select
             value={selectedOrgId ?? ""}
-            onChange={(event) => selectOrg(event.target.value)}
-            className="rounded border border-hairline bg-surface px-2 py-1 text-ink"
+            onValueChange={(value) => selectOrg(value ?? "")}
           >
-            {orgs.map((org) => (
-              <option key={org.id} value={org.id}>
-                {org.name}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger
+              aria-label="Organization"
+              className="rounded border border-hairline bg-surface px-2 py-1 text-sm text-ink data-placeholder:text-ink"
+            >
+              <SelectValue>
+                {(value: string) => orgs.find((org) => org.id === value)?.name ?? ""}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="rounded border border-hairline bg-surface text-ink">
+              {orgs.map((org) => (
+                <SelectItem
+                  key={org.id}
+                  value={org.id}
+                  className="text-ink focus:bg-bg focus:text-ink"
+                >
+                  {org.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
       </header>
       <main className="p-6">
