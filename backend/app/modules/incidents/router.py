@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.core.pagination import Page, Pagination
 from app.db.session import DbSession
 from app.modules.auth.deps import CurrentUser
 from app.modules.incidents import service as incidents_service
+from app.modules.incidents.models import IncidentSeverity, IncidentStatus
 from app.modules.incidents.schemas import (
     CreateIncidentRequest,
     IncidentOut,
@@ -53,11 +55,22 @@ async def create_incident(
 
 @router.get("", response_model=Page[IncidentOut])
 async def list_incidents(
-    org_id: UUID, db: DbSession, current_user: CurrentUser, page: Pagination
+    org_id: UUID,
+    db: DbSession,
+    current_user: CurrentUser,
+    page: Pagination,
+    incident_status: Annotated[IncidentStatus | None, Query(alias="status")] = None,
+    severity: IncidentSeverity | None = None,
 ) -> Page[IncidentOut]:
     try:
         incidents, total = await incidents_service.list_incidents(
-            db, org_id=org_id, user_id=current_user.id, limit=page.limit, offset=page.offset
+            db,
+            org_id=org_id,
+            user_id=current_user.id,
+            limit=page.limit,
+            offset=page.offset,
+            status=incident_status,
+            severity=severity,
         )
     except OrgNotFoundError as exc:
         raise HTTPException(

@@ -133,6 +133,49 @@ async def test_list_incidents_rejects_limit_over_max(client: AsyncClient) -> Non
     assert resp.status_code == 422
 
 
+async def test_list_incidents_filters_by_status(client: AsyncClient) -> None:
+    token, org_id = await _setup(client, "inc-filter-status@example.com", "inc-filter-status-org")
+    hdrs = {"Authorization": f"Bearer {token}"}
+    url = _inc_url(org_id)
+    await client.post(url, json={"title": "A", "severity": "sev1"}, headers=hdrs)
+    resp_open = await client.post(url, json={"title": "B", "severity": "sev1"}, headers=hdrs)
+    await client.patch(
+        f"{url}/{resp_open.json()['id']}/status",
+        json={"incident_status": "resolved"},
+        headers=hdrs,
+    )
+
+    resp = await client.get(url, params={"status": "resolved"}, headers=hdrs)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 1
+    assert body["items"][0]["title"] == "B"
+
+
+async def test_list_incidents_filters_by_severity(client: AsyncClient) -> None:
+    token, org_id = await _setup(client, "inc-filter-sev@example.com", "inc-filter-sev-org")
+    hdrs = {"Authorization": f"Bearer {token}"}
+    url = _inc_url(org_id)
+    await client.post(url, json={"title": "A", "severity": "sev1"}, headers=hdrs)
+    await client.post(url, json={"title": "B", "severity": "sev4"}, headers=hdrs)
+
+    resp = await client.get(url, params={"severity": "sev4"}, headers=hdrs)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 1
+    assert body["items"][0]["title"] == "B"
+
+
+async def test_list_incidents_rejects_invalid_status(client: AsyncClient) -> None:
+    token, org_id = await _setup(client, "inc-filter-bad@example.com", "inc-filter-bad-org")
+    resp = await client.get(
+        _inc_url(org_id),
+        params={"status": "not-a-real-status"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 422
+
+
 async def test_get_incident_not_found_returns_404(client: AsyncClient) -> None:
     token, org_id = await _setup(client, "inc-get404@example.com", "inc-get404-org")
     import uuid

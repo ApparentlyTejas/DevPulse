@@ -96,16 +96,26 @@ async def create_incident(
 
 
 async def list_incidents(
-    db: AsyncSession, org_id: UUID, user_id: UUID, limit: int, offset: int
+    db: AsyncSession,
+    org_id: UUID,
+    user_id: UUID,
+    limit: int,
+    offset: int,
+    status: IncidentStatus | None,
+    severity: IncidentSeverity | None,
 ) -> tuple[list[Incident], int]:
     await _assert_org_membership(db, org_id, user_id)
 
-    total = await db.scalar(
-        select(func.count()).select_from(Incident).where(Incident.org_id == org_id)
-    )
+    filters = [Incident.org_id == org_id]
+    if status is not None:
+        filters.append(Incident.incident_status == status)
+    if severity is not None:
+        filters.append(Incident.severity == severity)
+
+    total = await db.scalar(select(func.count()).select_from(Incident).where(*filters))
     result = await db.execute(
         select(Incident)
-        .where(Incident.org_id == org_id)
+        .where(*filters)
         .order_by(Incident.created_at.desc())
         .limit(limit)
         .offset(offset)
