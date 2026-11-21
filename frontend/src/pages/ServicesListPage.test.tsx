@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ApiError } from "../lib/api/client";
 import type { Service } from "../lib/api/services";
@@ -25,7 +26,9 @@ function renderPage() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <ServicesListPage />
+      <MemoryRouter>
+        <ServicesListPage />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -86,6 +89,17 @@ describe("ServicesListPage", () => {
     expect(screen.getByText("The main API")).toBeTruthy();
     expect(screen.getByText("Worker")).toBeTruthy();
     expect(listServices).toHaveBeenCalledWith("org-1", { limit: 20, offset: 0 });
+  });
+
+  test("renders the service name as a link to its detail page", async () => {
+    vi.mocked(listServices).mockResolvedValue(
+      mockPage([{ id: "svc-1", name: "API", description: "The main API" }]),
+    );
+
+    renderPage();
+
+    const nameLink = await screen.findByRole("link", { name: "API" });
+    expect(nameLink.getAttribute("href")).toBe("/services/svc-1");
   });
 
   test("shows the empty state when total is 0", async () => {
@@ -193,7 +207,9 @@ describe("ServicesListPage", () => {
     });
     const { rerender } = render(
       <QueryClientProvider client={queryClient}>
-        <ServicesListPage />
+        <MemoryRouter>
+          <ServicesListPage />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
 
@@ -209,7 +225,9 @@ describe("ServicesListPage", () => {
     mockOrg("org-2");
     rerender(
       <QueryClientProvider client={queryClient}>
-        <ServicesListPage />
+        <MemoryRouter>
+          <ServicesListPage />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
 

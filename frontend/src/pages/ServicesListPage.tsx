@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   ServiceFormDialog,
   type ServiceFormInitialValues,
@@ -188,7 +189,14 @@ export function ServicesListPage() {
             <tbody>
               {items.map((service) => (
                 <tr key={service.id} className="border-b border-hairline">
-                  <td className="py-2 pr-4">{service.name}</td>
+                  <td className="py-2 pr-4">
+                    <Link
+                      to={`/services/${service.id}`}
+                      className="text-accent-blue underline"
+                    >
+                      {service.name}
+                    </Link>
+                  </td>
                   <td className="py-2 pr-4">{service.description ?? ""}</td>
                   <td className="py-2 pr-4">
                     <div className="flex gap-2">
