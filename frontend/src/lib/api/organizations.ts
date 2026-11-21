@@ -36,6 +36,14 @@ export function deriveSlug(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+/, "")
+    .replace(/-+$/, "")
+    // The backend's `CreateOrgRequest.slug` has `max_length=64`; a long,
+    // punctuation-free name (the backend allows names up to 120 chars)
+    // would otherwise produce a slug the backend rejects with a 422.
+    // Truncating can expose a trailing hyphen (e.g. "...word-rest" cut
+    // mid-word is fine, but a cut right at a hyphen boundary isn't), so
+    // strip trailing hyphens again after truncating.
+    .slice(0, 64)
     .replace(/-+$/, "");
   // A name made entirely of punctuation/non-ASCII (e.g. "---" or "日本語")
   // strips down to nothing, which the backend's pattern rejects. Fall back
