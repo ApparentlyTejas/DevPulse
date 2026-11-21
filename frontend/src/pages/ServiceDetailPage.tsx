@@ -2,6 +2,7 @@ import { Tabs } from "@base-ui/react/tabs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { AlertRulesTab } from "../components/AlertRulesTab";
 import {
   ServiceFormDialog,
   type ServiceFormInitialValues,
@@ -172,12 +173,12 @@ export function ServiceDetailPage() {
         </Tabs.Panel>
 
         {/*
-          Alert Rules/Alert Events/Metrics content is owned by Tasks 7, 8,
-          and 9 respectively; this task only provides the tab shell they'll
-          mount into.
+          Alert Events/Metrics content is owned by Tasks 8 and 9
+          respectively; this task only provides the tab shell they'll mount
+          into. Alert Rules is filled in by this task (Task 7).
         */}
         <Tabs.Panel value="alert-rules" className="text-sm text-ink">
-          Coming soon.
+          <AlertRulesTab orgId={selectedOrgId} serviceId={serviceId} />
         </Tabs.Panel>
         <Tabs.Panel value="alert-events" className="text-sm text-ink">
           Coming soon.
