@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ApiError } from "../lib/api/client";
 import type { Incident } from "../lib/api/incidents";
@@ -33,7 +34,9 @@ function renderPage() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <IncidentsListPage />
+      <MemoryRouter>
+        <IncidentsListPage />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -92,6 +95,17 @@ describe("IncidentsListPage", () => {
     expect(sev4Dot.className).not.toContain("bg-critical");
     expect(sev4Dot.className).not.toContain("bg-accent-orange");
     expect(sev4Dot.className).not.toContain("bg-accent-blue");
+  });
+
+  test("renders the incident title as a link to its detail page", async () => {
+    vi.mocked(listIncidents).mockResolvedValue(
+      mockPage([{ id: "inc-1", title: "DB down", severity: "sev1" }]),
+    );
+
+    renderPage();
+
+    const titleLink = await screen.findByRole("link", { name: "DB down" });
+    expect(titleLink.getAttribute("href")).toBe("/incidents/inc-1");
   });
 
   test("re-fetches with the chosen status in the query params when the status filter changes", async () => {

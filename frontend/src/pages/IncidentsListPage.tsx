@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   IncidentFormDialog,
   type IncidentFormInitialValues,
@@ -274,7 +275,14 @@ export function IncidentsListPage() {
                       {incident.severity}
                     </span>
                   </td>
-                  <td className="py-2 pr-4">{incident.title}</td>
+                  <td className="py-2 pr-4">
+                    <Link
+                      to={`/incidents/${incident.id}`}
+                      className="text-accent-blue underline"
+                    >
+                      {incident.title}
+                    </Link>
+                  </td>
                   <td className="py-2 pr-4 font-mono">{incident.incident_status}</td>
                   <td className="py-2 pr-4 font-mono">{incident.created_at}</td>
                   <td className="py-2 pr-4">
