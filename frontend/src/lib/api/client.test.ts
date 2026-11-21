@@ -99,4 +99,45 @@ describe("apiRequest", () => {
     await expect(apiRequest("/broken")).rejects.toMatchObject({ status: 500 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  test("de-duplicates concurrent refreshes: two 401s at once only call /auth/refresh once", async () => {
+    localStorage.setItem(REFRESH_TOKEN_KEY, "old-refresh-token");
+    setTokenGetter(() => "expired-token");
+
+    const protectedCallCounts: Record<string, number> = {};
+
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+
+      if (url.includes("/auth/refresh")) {
+        return jsonResponse({
+          access_token: "new-access-token",
+          refresh_token: "new-refresh-token",
+          token_type: "bearer",
+          expires_at: "2030-01-01T00:00:00Z",
+        });
+      }
+
+      protectedCallCounts[url] = (protectedCallCounts[url] ?? 0) + 1;
+      if (protectedCallCounts[url] === 1) {
+        return jsonResponse({ detail: "expired" }, 401);
+      }
+      return jsonResponse({ result: "success" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const [resultA, resultB] = await Promise.all([
+      apiRequest<{ result: string }>("/protected-a"),
+      apiRequest<{ result: string }>("/protected-b"),
+    ]);
+
+    expect(resultA).toEqual({ result: "success" });
+    expect(resultB).toEqual({ result: "success" });
+
+    const refreshCalls = fetchMock.mock.calls.filter(([input]) =>
+      String(input).includes("/auth/refresh"),
+    );
+    expect(refreshCalls).toHaveLength(1);
+    expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBe("new-refresh-token");
+  });
 });

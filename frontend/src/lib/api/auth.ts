@@ -51,12 +51,16 @@ export async function register(email: string, password: string): Promise<TokenPa
   return toTokenPair(dto);
 }
 
-/**
- * Reads the refresh token from localStorage, exchanges it for a new token
- * pair, and persists the rotated refresh token. `client.ts` calls this once
- * on a 401 before retrying the original request.
- */
-export async function refreshAccessToken(): Promise<TokenPair> {
+// Tracks a refresh that's already in flight so concurrent callers (e.g.
+// auth-context's mount-restore effect and an independent apiRequest call
+// that hits a 401 around the same time) await the same request instead of
+// each reading the same pre-rotation refresh token from localStorage and
+// racing the backend. Cleared once the in-flight refresh settles, so a
+// later, unrelated refresh attempt isn't permanently blocked by a long-gone
+// call.
+let inFlightRefresh: Promise<TokenPair> | null = null;
+
+async function doRefreshAccessToken(): Promise<TokenPair> {
   const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
   if (!refreshToken) {
     throw new ApiError(401, "No refresh token available");
@@ -69,6 +73,25 @@ export async function refreshAccessToken(): Promise<TokenPair> {
   const pair = toTokenPair(dto);
   localStorage.setItem(REFRESH_TOKEN_KEY, pair.refreshToken);
   return pair;
+}
+
+/**
+ * Reads the refresh token from localStorage, exchanges it for a new token
+ * pair, and persists the rotated refresh token. `client.ts` calls this once
+ * on a 401 before retrying the original request; `auth-context.tsx` also
+ * calls it directly on mount to restore a session. If a refresh is already
+ * in flight, concurrent callers await that same promise rather than
+ * starting a second one.
+ */
+export async function refreshAccessToken(): Promise<TokenPair> {
+  if (inFlightRefresh) {
+    return inFlightRefresh;
+  }
+
+  inFlightRefresh = doRefreshAccessToken().finally(() => {
+    inFlightRefresh = null;
+  });
+  return inFlightRefresh;
 }
 
 export async function logout(): Promise<void> {
