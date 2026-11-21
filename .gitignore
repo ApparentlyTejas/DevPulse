@@ -63,3 +63,5 @@ logs/
 
 # ---- AI / local caches ----
 .claude/
+.worktrees/
+.superpowers/
