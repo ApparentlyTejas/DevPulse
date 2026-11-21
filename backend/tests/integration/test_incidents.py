@@ -166,6 +166,31 @@ async def test_list_incidents_filters_by_severity(client: AsyncClient) -> None:
     assert body["items"][0]["title"] == "B"
 
 
+async def test_list_incidents_combined_status_and_severity_zero_matches(client: AsyncClient) -> None:
+    token, org_id = await _setup(client, "inc-filter-combo@example.com", "inc-filter-combo-org")
+    hdrs = {"Authorization": f"Bearer {token}"}
+    url = _inc_url(org_id)
+    # A is sev1 and open; B is sev4 and resolved. Each filter alone matches one
+    # incident, but no incident matches both status=resolved and severity=sev1.
+    await client.post(url, json={"title": "A", "severity": "sev1"}, headers=hdrs)
+    resp_b = await client.post(url, json={"title": "B", "severity": "sev4"}, headers=hdrs)
+    await client.patch(
+        f"{url}/{resp_b.json()['id']}/status",
+        json={"incident_status": "resolved"},
+        headers=hdrs,
+    )
+
+    resp = await client.get(
+        url,
+        params={"status": "resolved", "severity": "sev1"},
+        headers=hdrs,
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 0
+    assert body["items"] == []
+
+
 async def test_list_incidents_rejects_invalid_status(client: AsyncClient) -> None:
     token, org_id = await _setup(client, "inc-filter-bad@example.com", "inc-filter-bad-org")
     resp = await client.get(
