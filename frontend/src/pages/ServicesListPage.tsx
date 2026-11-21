@@ -21,6 +21,17 @@ export function ServicesListPage() {
   const { selectedOrgId } = useOrg();
   const queryClient = useQueryClient();
   const [offset, setOffset] = useState(0);
+  // Switching orgs while on page 2+ would otherwise re-query the new org
+  // with a stale offset (e.g. showing "Showing 21-20 of 5"). Track the org
+  // we last paginated for and reset to the first page as soon as it
+  // changes -- done here during render (React's documented pattern for
+  // resetting state when a prop changes) rather than in an effect, so the
+  // stale-offset query is never issued in the first place.
+  const [paginatedOrgId, setPaginatedOrgId] = useState(selectedOrgId);
+  if (selectedOrgId !== paginatedOrgId) {
+    setPaginatedOrgId(selectedOrgId);
+    setOffset(0);
+  }
   const [actionError, setActionError] = useState<string | null>(null);
   const [dialogState, setDialogState] = useState<
     | { open: false }

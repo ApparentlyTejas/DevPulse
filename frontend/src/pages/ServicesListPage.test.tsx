@@ -29,6 +29,16 @@ function renderPage() {
   );
 }
 
+function mockOrg(selectedOrgId: string) {
+  vi.mocked(useOrg).mockReturnValue({
+    orgs: [{ id: selectedOrgId, name: "Acme" }],
+    selectedOrgId,
+    selectOrg: vi.fn(),
+    createOrg: vi.fn(),
+    isLoading: false,
+  });
+}
+
 function mockPage(items: { id: string; name: string; description: string | null }[]) {
   return { items, total: items.length, limit: 20, offset: 0 };
 }
@@ -151,5 +161,47 @@ describe("ServicesListPage", () => {
     // form was seeded with) is what makes `JSON.stringify` drop the key
     // from the actual PATCH body sent over the wire.
     expect(body.status).toBeUndefined();
+  });
+
+  test("resets pagination to the first page when the selected org changes", async () => {
+    vi.mocked(listServices).mockResolvedValue({
+      items: Array.from({ length: 20 }, (_, i) => ({
+        id: `svc-${i}`,
+        name: `Service ${i}`,
+        description: null,
+      })),
+      total: 50,
+      limit: 20,
+      offset: 0,
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <ServicesListPage />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("Service 0")).toBeTruthy();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /next/i }));
+
+    await waitFor(() =>
+      expect(listServices).toHaveBeenCalledWith("org-1", { limit: 20, offset: 20 }),
+    );
+
+    mockOrg("org-2");
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <ServicesListPage />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() =>
+      expect(listServices).toHaveBeenCalledWith("org-2", { limit: 20, offset: 0 }),
+    );
   });
 });
