@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { AlertEventsTab } from "../components/AlertEventsTab";
 import { AlertRulesTab } from "../components/AlertRulesTab";
+import { MetricsTab } from "../components/MetricsTab";
 import {
   ServiceFormDialog,
   type ServiceFormInitialValues,
@@ -173,11 +174,6 @@ export function ServiceDetailPage() {
           </dl>
         </Tabs.Panel>
 
-        {/*
-          Metrics content is owned by Task 9; this task only provides the
-          tab shell it'll mount into. Alert Rules (Task 7) and Alert Events
-          (Task 8) are filled in.
-        */}
         <Tabs.Panel value="alert-rules" className="text-sm text-ink">
           <AlertRulesTab orgId={selectedOrgId} serviceId={serviceId} />
         </Tabs.Panel>
@@ -185,7 +181,7 @@ export function ServiceDetailPage() {
           <AlertEventsTab orgId={selectedOrgId} serviceId={serviceId} />
         </Tabs.Panel>
         <Tabs.Panel value="metrics" className="text-sm text-ink">
-          Coming soon.
+          <MetricsTab orgId={selectedOrgId} serviceId={serviceId} />
         </Tabs.Panel>
       </Tabs.Root>
 

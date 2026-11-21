@@ -23,10 +23,15 @@ vi.mock("../lib/api/alerts", () => ({
   listAlertEvents: vi.fn(),
   updateAlertEventStatus: vi.fn(),
 }));
+vi.mock("../lib/api/metrics", () => ({
+  listMetrics: vi.fn(),
+  createMetric: vi.fn(),
+}));
 
 import { useOrg } from "../lib/org-context";
 import { deleteService, getService } from "../lib/api/services";
 import { listAlertRules, listAlertEvents } from "../lib/api/alerts";
+import { listMetrics } from "../lib/api/metrics";
 
 function makeService(overrides: Partial<Service> = {}): Service {
   return {
@@ -71,6 +76,7 @@ describe("ServiceDetailPage", () => {
     });
     vi.mocked(listAlertRules).mockResolvedValue([]);
     vi.mocked(listAlertEvents).mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
+    vi.mocked(listMetrics).mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
   });
 
   test("renders the service name and description in the Overview tab", async () => {
@@ -106,7 +112,7 @@ describe("ServiceDetailPage", () => {
     expect(await screen.findByRole("heading", { name: "API" })).toBeTruthy();
   });
 
-  test("renders all four tabs, with Alert Rules/Events showing real content and Metrics a placeholder", async () => {
+  test("renders all four tabs, each showing real content", async () => {
     vi.mocked(getService).mockResolvedValue(makeService());
 
     renderPage();
@@ -121,7 +127,7 @@ describe("ServiceDetailPage", () => {
     expect(await screen.findByText(/no alert events yet/i)).toBeTruthy();
 
     await user.click(screen.getByRole("tab", { name: "Metrics" }));
-    expect(await screen.findByText("Coming soon.")).toBeTruthy();
+    expect(await screen.findByText(/no metric snapshots yet/i)).toBeTruthy();
   });
 
   test("deleting the service navigates back to the services list", async () => {
