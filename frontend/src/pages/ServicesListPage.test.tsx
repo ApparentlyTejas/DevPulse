@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ApiError } from "../lib/api/client";
+import type { Service } from "../lib/api/services";
 import { ServicesListPage } from "./ServicesListPage";
 
 vi.mock("../lib/org-context", () => ({
@@ -39,8 +40,24 @@ function mockOrg(selectedOrgId: string) {
   });
 }
 
-function mockPage(items: { id: string; name: string; description: string | null }[]) {
-  return { items, total: items.length, limit: 20, offset: 0 };
+// `Service` now carries the full backend record; these tests only care
+// about `id`/`name`/`description`, so fill the rest with defaults.
+function makeService(
+  overrides: { id: string; name: string; description: string | null } & Partial<Service>,
+): Service {
+  return {
+    org_id: "org-1",
+    slug: overrides.id,
+    status: "unknown",
+    repository_url: null,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+    ...overrides,
+  };
+}
+
+function mockPage(items: ({ id: string; name: string; description: string | null } & Partial<Service>)[]) {
+  return { items: items.map(makeService), total: items.length, limit: 20, offset: 0 };
 }
 
 describe("ServicesListPage", () => {
@@ -136,11 +153,9 @@ describe("ServicesListPage", () => {
     vi.mocked(listServices).mockResolvedValue(
       mockPage([{ id: "svc-1", name: "API", description: "The main API" }]),
     );
-    vi.mocked(updateService).mockResolvedValue({
-      id: "svc-1",
-      name: "API v2",
-      description: "The main API",
-    });
+    vi.mocked(updateService).mockResolvedValue(
+      makeService({ id: "svc-1", name: "API v2", description: "The main API" }),
+    );
 
     renderPage();
 
@@ -165,11 +180,9 @@ describe("ServicesListPage", () => {
 
   test("resets pagination to the first page when the selected org changes", async () => {
     vi.mocked(listServices).mockResolvedValue({
-      items: Array.from({ length: 20 }, (_, i) => ({
-        id: `svc-${i}`,
-        name: `Service ${i}`,
-        description: null,
-      })),
+      items: Array.from({ length: 20 }, (_, i) =>
+        makeService({ id: `svc-${i}`, name: `Service ${i}`, description: null }),
+      ),
       total: 50,
       limit: 20,
       offset: 0,

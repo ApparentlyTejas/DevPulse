@@ -79,14 +79,12 @@ export function ServicesListPage() {
         name: values.name,
         description: values.description || undefined,
         repository_url: values.repository_url || undefined,
-        // `toInitialValues` below can't know the service's real current
-        // status (the minimal `Service` list-row type doesn't carry it,
-        // only Task 6's `getService` will), so it always seeds the edit
-        // form's status as "unknown". Sending `values.status`
-        // unconditionally would silently reset an untouched service's
-        // real status to "unknown" on every edit. Only send it when the
-        // user actually changed the field, mirroring the
-        // "send only if touched" treatment above.
+        // Even though `toInitialValues` now seeds the form with the
+        // service's real current status, only send `status` when the user
+        // actually touched the field -- it keeps this mutation's payload
+        // minimal and mirrors the "send only if touched" treatment above
+        // for the other fields, rather than depending on the form always
+        // being seeded correctly.
         status: statusTouched ? values.status : undefined,
       }),
     onSuccess: () => invalidate(),
@@ -267,11 +265,8 @@ function toInitialValues(service: Service): ServiceFormInitialValues {
   return {
     name: service.name,
     description: service.description,
-    // `Service` (the minimal list-row shape) doesn't carry `repository_url`
-    // or `status`; the edit dialog starts those blank/default rather than
-    // fetching the full resource, which is out of scope for this task.
-    repository_url: "",
-    status: "unknown",
+    repository_url: service.repository_url,
+    status: service.status,
   };
 }
 

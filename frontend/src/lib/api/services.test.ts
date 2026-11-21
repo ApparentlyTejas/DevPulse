@@ -49,7 +49,19 @@ describe("services api", () => {
     const [url] = fetchMock.mock.calls[0];
     expect(url).toBe("http://localhost:8000/api/v1/organizations/org-1/services?limit=20&offset=0");
     expect(page).toEqual({
-      items: [{ id: "svc-1", name: "API", description: "The main API" }],
+      items: [
+        {
+          id: "svc-1",
+          org_id: "org-1",
+          name: "API",
+          slug: "api",
+          description: "The main API",
+          status: "healthy",
+          repository_url: null,
+          created_at: "2026-01-01T00:00:00Z",
+          updated_at: "2026-01-01T00:00:00Z",
+        },
+      ],
       total: 1,
       limit: 20,
       offset: 0,
@@ -81,7 +93,17 @@ describe("services api", () => {
     const [, init] = fetchMock.mock.calls[0];
     const body = JSON.parse(init.body as string);
     expect(body).toEqual({ name: "My Service", slug: "my-service" });
-    expect(service).toEqual({ id: "svc-1", name: "My Service", description: null });
+    expect(service).toEqual({
+      id: "svc-1",
+      org_id: "org-1",
+      name: "My Service",
+      slug: "my-service",
+      description: null,
+      status: "unknown",
+      repository_url: null,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    });
   });
 
   test("createService includes description and repository_url when provided", async () => {
@@ -140,7 +162,17 @@ describe("services api", () => {
     expect(url).toBe("http://localhost:8000/api/v1/organizations/org-1/services/svc-1");
     expect(init.method).toBe("PATCH");
     expect(JSON.parse(init.body as string)).toEqual({ name: "Renamed", status: "degraded" });
-    expect(service).toEqual({ id: "svc-1", name: "Renamed", description: null });
+    expect(service).toEqual({
+      id: "svc-1",
+      org_id: "org-1",
+      name: "Renamed",
+      slug: "my-service",
+      description: null,
+      status: "degraded",
+      repository_url: null,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    });
   });
 
   test("deleteService sends a DELETE and surfaces a 404 as an ApiError", async () => {

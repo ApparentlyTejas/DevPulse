@@ -11,10 +11,24 @@ import { deriveSlug } from "../slug";
 
 export type ServiceStatus = "unknown" | "healthy" | "degraded" | "down";
 
+// Widened to the full backend record (see `ServiceOut` in
+// `backend/app/modules/services/schemas.py`) rather than keeping a separate,
+// richer type just for `getService`. `listServices`/`createService`/
+// `updateService` already receive all of these fields from the backend on
+// every response; they just used to throw most of them away. Carrying them
+// through means list rows now have real `repository_url`/`status` values
+// too, which lets `ServicesListPage`'s edit dialog pre-populate those fields
+// correctly instead of always seeding them blank/"unknown".
 export interface Service {
   id: string;
+  org_id: string;
   name: string;
+  slug: string;
   description: string | null;
+  status: ServiceStatus;
+  repository_url: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Page<T> {
@@ -37,7 +51,17 @@ interface ServiceResponse {
 }
 
 function toService(dto: ServiceResponse): Service {
-  return { id: dto.id, name: dto.name, description: dto.description };
+  return {
+    id: dto.id,
+    org_id: dto.org_id,
+    name: dto.name,
+    slug: dto.slug,
+    description: dto.description,
+    status: dto.status,
+    repository_url: dto.repository_url,
+    created_at: dto.created_at,
+    updated_at: dto.updated_at,
+  };
 }
 
 export async function listServices(
