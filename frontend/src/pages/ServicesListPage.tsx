@@ -55,12 +55,28 @@ export function ServicesListPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ serviceId, values }: { serviceId: string; values: ServiceFormValues }) =>
+    mutationFn: ({
+      serviceId,
+      values,
+      statusTouched,
+    }: {
+      serviceId: string;
+      values: ServiceFormValues;
+      statusTouched: boolean;
+    }) =>
       updateService(selectedOrgId as string, serviceId, {
         name: values.name,
         description: values.description || undefined,
         repository_url: values.repository_url || undefined,
-        status: values.status,
+        // `toInitialValues` below can't know the service's real current
+        // status (the minimal `Service` list-row type doesn't carry it,
+        // only Task 6's `getService` will), so it always seeds the edit
+        // form's status as "unknown". Sending `values.status`
+        // unconditionally would silently reset an untouched service's
+        // real status to "unknown" on every edit. Only send it when the
+        // user actually changed the field, mirroring the
+        // "send only if touched" treatment above.
+        status: statusTouched ? values.status : undefined,
       }),
     onSuccess: () => invalidate(),
   });
@@ -89,9 +105,17 @@ export function ServicesListPage() {
     await createMutation.mutateAsync(values);
   }
 
-  async function handleEdit(service: Service, values: ServiceFormValues) {
+  async function handleEdit(
+    service: Service,
+    values: ServiceFormValues,
+    dirtyFields: Partial<Record<keyof ServiceFormValues, boolean>>,
+  ) {
     if (!selectedOrgId) return;
-    await updateMutation.mutateAsync({ serviceId: service.id, values });
+    await updateMutation.mutateAsync({
+      serviceId: service.id,
+      values,
+      statusTouched: Boolean(dirtyFields.status),
+    });
   }
 
   function handleDelete(service: Service) {
@@ -217,9 +241,9 @@ export function ServicesListPage() {
         onOpenChange={(open) => {
           if (!open) setDialogState({ open: false });
         }}
-        onSubmit={(values) => {
+        onSubmit={(values, dirtyFields) => {
           if (dialogState.open && dialogState.mode === "edit") {
-            return handleEdit(dialogState.service, values);
+            return handleEdit(dialogState.service, values, dirtyFields);
           }
           return handleCreate(values);
         }}

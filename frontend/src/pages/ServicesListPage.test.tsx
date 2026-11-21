@@ -16,7 +16,7 @@ vi.mock("../lib/api/services", () => ({
 }));
 
 import { useOrg } from "../lib/org-context";
-import { deleteService, listServices } from "../lib/api/services";
+import { deleteService, listServices, updateService } from "../lib/api/services";
 
 function renderPage() {
   const queryClient = new QueryClient({
@@ -120,5 +120,36 @@ describe("ServicesListPage", () => {
     expect(await screen.findByText("Service not found")).toBeTruthy();
     await waitFor(() => expect(listServices).toHaveBeenCalledTimes(2));
     expect(await screen.findByText(/no services yet/i)).toBeTruthy();
+  });
+
+  test("editing a service without touching status does not send status in the update", async () => {
+    vi.mocked(listServices).mockResolvedValue(
+      mockPage([{ id: "svc-1", name: "API", description: "The main API" }]),
+    );
+    vi.mocked(updateService).mockResolvedValue({
+      id: "svc-1",
+      name: "API v2",
+      description: "The main API",
+    });
+
+    renderPage();
+
+    expect(await screen.findByText("API")).toBeTruthy();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+
+    const nameInput = await screen.findByLabelText(/name/i);
+    await user.clear(nameInput);
+    await user.type(nameInput, "API v2");
+    // Deliberately leave the Status field untouched.
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    await waitFor(() => expect(updateService).toHaveBeenCalled());
+    const [, , body] = vi.mocked(updateService).mock.calls[0];
+    // `status: undefined` (rather than the hardcoded "unknown" the edit
+    // form was seeded with) is what makes `JSON.stringify` drop the key
+    // from the actual PATCH body sent over the wire.
+    expect(body.status).toBeUndefined();
   });
 });

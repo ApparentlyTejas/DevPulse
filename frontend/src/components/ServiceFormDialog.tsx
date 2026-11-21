@@ -34,7 +34,14 @@ interface ServiceFormDialogProps {
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
   initialValues?: ServiceFormInitialValues;
-  onSubmit: (values: ServiceFormValues) => Promise<void>;
+  // `dirtyFields` tells the caller which fields the user actually touched
+  // during this submit, so it can decide (e.g. for `status`) whether a
+  // field should be sent at all rather than always sending its current
+  // form value -- see `ServicesListPage`'s `updateMutation`.
+  onSubmit: (
+    values: ServiceFormValues,
+    dirtyFields: Partial<Record<keyof ServiceFormValues, boolean>>,
+  ) => Promise<void>;
 }
 
 const EMPTY_VALUES: ServiceFormValues = {
@@ -56,7 +63,7 @@ export function ServiceFormDialog({
     handleSubmit,
     reset,
     setError,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, dirtyFields },
   } = useForm<ServiceFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: EMPTY_VALUES,
@@ -78,7 +85,7 @@ export function ServiceFormDialog({
 
   async function submit(values: ServiceFormValues) {
     try {
-      await onSubmit(values);
+      await onSubmit(values, dirtyFields);
       onOpenChange(false);
     } catch (err) {
       setError("name", {
