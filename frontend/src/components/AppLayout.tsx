@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Navigate, Outlet } from "react-router-dom";
+import { Link, Navigate, Outlet } from "react-router-dom";
 import { ApiError } from "../lib/api/client";
 import { useAuth } from "../lib/auth-context";
 import { useOrg } from "../lib/org-context";
@@ -34,7 +34,17 @@ export function AppLayout() {
   return (
     <div className="min-h-screen bg-bg font-sans text-ink">
       <header className="flex items-center justify-between border-b border-hairline px-6 py-4">
-        <h1 className="text-lg font-medium">DevPulse</h1>
+        <div className="flex items-center gap-6">
+          <h1 className="text-lg font-medium">DevPulse</h1>
+          <nav className="flex items-center gap-4 text-sm">
+            <Link
+              to={selectedOrgId ? `/organizations/${selectedOrgId}/members` : "#"}
+              className="text-ink underline-offset-2 hover:underline"
+            >
+              Members
+            </Link>
+          </nav>
+        </div>
         <label className="flex items-center gap-2 text-sm">
           Organization
           <Select

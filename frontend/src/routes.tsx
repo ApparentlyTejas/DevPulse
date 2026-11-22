@@ -3,6 +3,7 @@ import { AppLayout } from "./components/AppLayout";
 import { IncidentDetailPage } from "./pages/IncidentDetailPage";
 import { IncidentsListPage } from "./pages/IncidentsListPage";
 import { LoginPage } from "./pages/LoginPage";
+import { MembersPage } from "./pages/MembersPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ServiceDetailPage } from "./pages/ServiceDetailPage";
 import { ServicesListPage } from "./pages/ServicesListPage";
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
       { path: "services/:id", element: <ServiceDetailPage /> },
       { path: "incidents", element: <IncidentsListPage /> },
       { path: "incidents/:id", element: <IncidentDetailPage /> },
+      { path: "organizations/:id/members", element: <MembersPage /> },
     ],
   },
 ]);

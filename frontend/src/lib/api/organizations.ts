@@ -52,3 +52,83 @@ export async function createOrganization(name: string): Promise<Org> {
   });
   return toOrg(dto);
 }
+
+// ---------------------------------------------------------------------------
+// Membership management. Mapped onto `MembershipOut` in
+// `backend/app/modules/organizations/schemas.py`: a membership row nests the
+// user (`id`/`email`/`full_name`) and carries `role` (`OrgRole`: "owner" |
+// "admin" | "member") and `created_at`.
+// ---------------------------------------------------------------------------
+
+export type MemberRole = "owner" | "admin" | "member";
+
+export interface Member {
+  id: string;
+  userId: string;
+  email: string;
+  fullName: string | null;
+  role: MemberRole;
+  createdAt: string;
+}
+
+interface MembershipResponse {
+  id: string;
+  user: {
+    id: string;
+    email: string;
+    full_name: string | null;
+  };
+  role: MemberRole;
+  created_at: string;
+}
+
+function toMember(dto: MembershipResponse): Member {
+  return {
+    id: dto.id,
+    userId: dto.user.id,
+    email: dto.user.email,
+    fullName: dto.user.full_name,
+    role: dto.role,
+    createdAt: dto.created_at,
+  };
+}
+
+export async function listMembers(orgId: string): Promise<Member[]> {
+  const dtos = await apiRequest<MembershipResponse[]>(`/organizations/${orgId}/members`);
+  return dtos.map(toMember);
+}
+
+/**
+ * Adds a member by raw user ID. The backend's `AddMemberRequest.role`
+ * defaults to `OrgRole.MEMBER`, so it's intentionally omitted from the
+ * request body here -- there's no role picker in the "add member" form
+ * (per the task spec, it only takes a user ID).
+ */
+export async function addMember(orgId: string, userId: string): Promise<Member> {
+  const dto = await apiRequest<MembershipResponse>(`/organizations/${orgId}/members`, {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId }),
+  });
+  return toMember(dto);
+}
+
+export async function updateMemberRole(
+  orgId: string,
+  userId: string,
+  role: MemberRole,
+): Promise<Member> {
+  const dto = await apiRequest<MembershipResponse>(
+    `/organizations/${orgId}/members/${userId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    },
+  );
+  return toMember(dto);
+}
+
+export async function removeMember(orgId: string, userId: string): Promise<void> {
+  await apiRequest<void>(`/organizations/${orgId}/members/${userId}`, {
+    method: "DELETE",
+  });
+}
