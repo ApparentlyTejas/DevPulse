@@ -166,7 +166,9 @@ async def test_list_incidents_filters_by_severity(client: AsyncClient) -> None:
     assert body["items"][0]["title"] == "B"
 
 
-async def test_list_incidents_combined_status_and_severity_zero_matches(client: AsyncClient) -> None:
+async def test_list_incidents_combined_status_and_severity_zero_matches(
+    client: AsyncClient,
+) -> None:
     token, org_id = await _setup(client, "inc-filter-combo@example.com", "inc-filter-combo-org")
     hdrs = {"Authorization": f"Bearer {token}"}
     url = _inc_url(org_id)
