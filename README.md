@@ -1,6 +1,8 @@
 # DevPulse
 
-DevPulse is an engineering-ops backend that tracks services, metrics, alerts, and incidents for an organization, then hands that incident data to Claude for triage and postmortem drafting, both through a REST API and through a native MCP server so any MCP client (Claude Desktop included) can query and act on the same data. It is not a demo wrapped around a chatbot: it has org-scoped auth, Redis-backed rate limiting on every paid AI call, pagination on every unbounded list endpoint, a prod-safe secret guard, and a test suite that spins up real Postgres and Redis containers instead of mocking the database away.
+DevPulse is a backend that tracks services, metrics, alerts, and incidents for an organization, and lets Claude triage and draft postmortems for those incidents, either over a normal REST API or over a native MCP server, so any MCP client (Claude Desktop included) can list, create, and act on the same incidents directly.
+
+It is built like something meant to run, not a demo wrapped around a chatbot: org-scoped auth, Redis-backed rate limiting on every paid AI call, pagination on every unbounded list endpoint, a prod-safe secret guard, and a test suite that runs against real Postgres and Redis containers instead of mocking the database away.
 
 ![CI](https://github.com/ApparentlyTejas/DevPulse/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
@@ -52,6 +54,39 @@ flowchart LR
 ```
 
 The MCP server deliberately holds no database connection of its own. Every tool call it makes is a plain HTTP request against the already-running API, so it inherits the exact same org-membership authorization as any other client instead of duplicating that logic in a second place.
+
+Inside the API, each domain (`app/modules/*`) is a self-contained router → service → models slice; the only module every other one depends on is `auth` (for `CurrentUser`), and `ai` is the one exception that reaches sideways into `incidents.service` to read the facts it triages or summarizes:
+
+```mermaid
+flowchart TB
+  AUTH["modules/auth/<br/>router, service, security"]
+
+  subgraph Domain["Sibling domain modules"]
+    SVC["modules/services/"]
+    MET["modules/metrics/"]
+    ALR["modules/alerts/"]
+    INC["modules/incidents/"]
+  end
+
+  SVC --> AUTH
+  MET --> AUTH
+  ALR --> AUTH
+  INC --> AUTH
+
+  AI["modules/ai/<br/>router, service, client"] --> AUTH
+  AI -->|reads incident facts| INC
+  AI --> CLAUDE[("Anthropic API")]
+
+  MCPC["mcp_server/client.py"] -->|plain HTTPS, bearer token, no DB access| INC
+  MCPC -->|plain HTTPS| SVC
+
+  AUTH --> DB[("PostgreSQL")]
+  SVC --> DB
+  MET --> DB
+  ALR --> DB
+  INC --> DB
+  AI --> DB
+```
 
 ## Features
 
@@ -122,6 +157,20 @@ DEVPULSE_MCP_ACCESS_TOKEN=<a valid access token> \
 DEVPULSE_MCP_ORG_ID=<the org to scope every call to> \
 uv run devpulse-mcp
 ```
+
+## Benchmarks
+
+Reproducible locally with `backend/scripts/run_bench.sh` (seeds an org with 200 incidents, then runs [ApacheBench](https://httpd.apache.org/docs/2.4/programs/ab.html) against three endpoints that exercise different layers of the stack). Measured against the `make up` Docker stack (API + Postgres + Redis, no external AI calls) on an Apple M1, 8 cores:
+
+| Endpoint | What it exercises | Requests/sec | Median | p95 | p99 |
+|---|---|---|---|---|---|
+| `GET /organizations/{org_id}/incidents` (c=10, n=500) | JWT auth, org-scoped paginated query | 339 | 25ms | 55ms | 114ms |
+| `POST /organizations/{org_id}/incidents` (c=10, n=300) | JWT auth, org-scoped insert | 350 | 25ms | 40ms | 107ms |
+| `POST /auth/login` (c=10, n=200) | argon2id password verification | 15 | 587ms | 1637ms | 1995ms |
+
+The login endpoint is ~25x slower than the authenticated CRUD paths, deliberately: argon2id's memory-hard hashing is the whole point of that cost, not a bug to optimize away. The Claude-backed triage and postmortem endpoints are excluded from this benchmark because they call a real, metered Anthropic API; the rate limiter and timeout/retry settings described below exist precisely because that cost isn't something to load-test casually.
+
+These numbers describe this machine and this seed, not a production SLA; rerun `run_bench.sh` on your own hardware before citing a number elsewhere.
 
 ## What's technically interesting here
 
