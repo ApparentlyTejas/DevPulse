@@ -78,7 +78,7 @@ The MCP server deliberately holds no database connection of its own. Every tool 
 | Tooling | ruff, mypy (strict), uv, Docker Compose, GitHub Actions |
 | Logging | structlog (structured JSON) |
 
-Frontend (React, TypeScript, Vite, Tailwind, shadcn/ui) is scaffolded in `frontend/` but still has no real screens wired to the API; everything above is exercised through the REST API, the test suite, and the MCP server. To run the scaffold:
+Frontend (React, TypeScript, Vite, Tailwind, shadcn/ui, Base UI) lives in `frontend/`: auth, org switching, services, incidents, alert rules/events, metrics, AI triage/postmortems, and org members are all wired to the API. To run it:
 
 ```bash
 cd frontend
@@ -144,7 +144,7 @@ uv run devpulse-mcp
 | --- | --- | --- |
 | Phase 1 | Core backend (auth through incidents) | Done |
 | Phase 2 | AI layer (Claude triage, MCP, RAG) | In progress: triage, postmortems, and the MCP server are shipped; RAG is next |
-| Phase 3 | Frontend | In progress: Vite/React/Tailwind scaffold and design tokens are shipped; screens wired to the API are next |
+| Phase 3 | Frontend | Done: auth, org switching, services, incidents, alert rules/events, metrics, AI triage/postmortems, and org members are all shipped |
 | Phase 4 | Production infrastructure (AWS) | In progress: pagination, rate limiting, Claude timeouts/retries, and the prod secret guard are shipped; deployment and observability are next |
 | Phase 5 | Polish, docs, demo | Not started |
 
