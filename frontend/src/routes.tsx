@@ -28,7 +28,7 @@ export const router = createBrowserRouter([
       { path: "services/:id", element: <ServiceDetailPage /> },
       { path: "incidents", element: <IncidentsListPage /> },
       { path: "incidents/:id", element: <IncidentDetailPage /> },
-      { path: "organizations/:id/members", element: <MembersPage /> },
+      { path: "members", element: <MembersPage /> },
     ],
   },
 ]);

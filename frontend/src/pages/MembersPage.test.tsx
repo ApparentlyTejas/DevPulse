@@ -63,6 +63,8 @@ describe("MembersPage", () => {
       selectedOrgId: "org-1",
       selectOrg: vi.fn(),
       createOrg: vi.fn(),
+      error: null,
+      retry: vi.fn(),
       isLoading: false,
     });
   });
@@ -97,6 +99,8 @@ describe("MembersPage", () => {
       selectedOrgId: null,
       selectOrg: vi.fn(),
       createOrg: vi.fn(),
+      error: null,
+      retry: vi.fn(),
       isLoading: false,
     });
 

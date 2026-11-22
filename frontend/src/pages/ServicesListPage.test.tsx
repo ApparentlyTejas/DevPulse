@@ -39,6 +39,8 @@ function mockOrg(selectedOrgId: string) {
     selectedOrgId,
     selectOrg: vi.fn(),
     createOrg: vi.fn(),
+    error: null,
+    retry: vi.fn(),
     isLoading: false,
   });
 }
@@ -71,6 +73,8 @@ describe("ServicesListPage", () => {
       selectedOrgId: "org-1",
       selectOrg: vi.fn(),
       createOrg: vi.fn(),
+      error: null,
+      retry: vi.fn(),
       isLoading: false,
     });
   });
@@ -234,5 +238,66 @@ describe("ServicesListPage", () => {
     await waitFor(() =>
       expect(listServices).toHaveBeenCalledWith("org-2", { limit: 20, offset: 0 }),
     );
+  });
+
+  test("invalidates the list on a 404 edit (not just on success), so the row drops after Cancel", async () => {
+    vi.mocked(listServices).mockResolvedValueOnce(
+      mockPage([{ id: "svc-1", name: "API", description: null }]),
+    );
+    vi.mocked(updateService).mockRejectedValue(new ApiError(404, "Service not found"));
+    vi.mocked(listServices).mockResolvedValueOnce(mockPage([]));
+
+    renderPage();
+
+    expect(await screen.findByText("API")).toBeTruthy();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    // The mutation's `onSettled` invalidation fires on this failed submit,
+    // not only on a later success -- the list refetch (and the row
+    // dropping) doesn't wait for Cancel.
+    await waitFor(() => expect(listServices).toHaveBeenCalledTimes(2));
+
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+
+    expect(await screen.findByText(/no services yet/i)).toBeTruthy();
+  });
+
+  test("steps pagination back a page after deleting the only row on page 2", async () => {
+    vi.mocked(listServices).mockResolvedValueOnce({
+      items: Array.from({ length: 20 }, (_, i) =>
+        makeService({ id: `svc-${i}`, name: `Service ${i}`, description: null }),
+      ),
+      total: 21,
+      limit: 20,
+      offset: 0,
+    });
+    vi.mocked(listServices).mockResolvedValueOnce(
+      mockPage([{ id: "svc-last", name: "Last one", description: null }]),
+    );
+
+    renderPage();
+
+    expect(await screen.findByText("Service 0")).toBeTruthy();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /next/i }));
+    expect(await screen.findByText("Last one")).toBeTruthy();
+
+    vi.mocked(deleteService).mockResolvedValue(undefined);
+    // After the delete, the offset-20 query returns an empty page with
+    // total 0 (the deletion's own invalidation refetch); the component
+    // should step `offset` back to 0 and land on a real page, not an
+    // empty table under a "Showing 21-20 of 20" footer.
+    vi.mocked(listServices).mockResolvedValue(mockPage([]));
+
+    await user.click(screen.getByRole("button", { name: /delete/i }));
+
+    await waitFor(() =>
+      expect(listServices).toHaveBeenCalledWith("org-1", { limit: 20, offset: 0 }),
+    );
+    expect(screen.queryByText(/showing 21-20/i)).toBeNull();
   });
 });

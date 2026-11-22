@@ -71,6 +71,8 @@ describe("IncidentsListPage", () => {
       selectedOrgId: "org-1",
       selectOrg: vi.fn(),
       createOrg: vi.fn(),
+      error: null,
+      retry: vi.fn(),
       isLoading: false,
     });
     vi.mocked(listServices).mockResolvedValue({ items: [], total: 0, limit: 100, offset: 0 });
@@ -201,5 +203,65 @@ describe("IncidentsListPage", () => {
     const [, , body] = vi.mocked(updateIncident).mock.calls[0];
     expect(body).toMatchObject({ title: "DB down v2" });
     expect(body).not.toHaveProperty("service_id");
+  });
+
+  test("invalidates the list on a 404 edit (not just on success), so the row drops after Cancel", async () => {
+    vi.mocked(listIncidents).mockResolvedValueOnce(
+      mockPage([{ id: "inc-1", title: "DB down", severity: "sev1" }]),
+    );
+    vi.mocked(updateIncident).mockRejectedValue(new ApiError(404, "Incident not found"));
+    vi.mocked(listIncidents).mockResolvedValueOnce({ items: [], total: 0, limit: 20, offset: 0 });
+
+    renderPage();
+
+    expect(await screen.findByText("DB down")).toBeTruthy();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    // `onSettled` invalidation fires on this failed submit already, not
+    // only on a later success -- the row doesn't wait for Cancel to drop.
+    await waitFor(() => expect(listIncidents).toHaveBeenCalledTimes(2));
+
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+
+    expect(await screen.findByText(/no incidents yet/i)).toBeTruthy();
+  });
+
+  test("steps pagination back a page after deleting the only row on page 2", async () => {
+    vi.mocked(listIncidents).mockResolvedValueOnce({
+      items: Array.from({ length: 20 }, (_, i) =>
+        makeIncident({ id: `inc-${i}`, title: `Incident ${i}`, severity: "sev3" }),
+      ),
+      total: 21,
+      limit: 20,
+      offset: 0,
+    });
+    vi.mocked(listIncidents).mockResolvedValueOnce(
+      mockPage([{ id: "inc-last", title: "Last one", severity: "sev3" }]),
+    );
+
+    renderPage();
+
+    expect(await screen.findByText("Incident 0")).toBeTruthy();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /next/i }));
+    expect(await screen.findByText("Last one")).toBeTruthy();
+
+    vi.mocked(deleteIncident).mockResolvedValue(undefined);
+    vi.mocked(listIncidents).mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
+
+    await user.click(screen.getByRole("button", { name: /delete/i }));
+
+    await waitFor(() =>
+      expect(listIncidents).toHaveBeenCalledWith(
+        "org-1",
+        { status: undefined, severity: undefined },
+        { limit: 20, offset: 0 },
+      ),
+    );
+    expect(screen.queryByText(/showing 21-20/i)).toBeNull();
   });
 });

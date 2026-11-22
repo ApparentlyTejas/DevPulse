@@ -43,6 +43,8 @@ function mockOrg(selectedOrgId: string | null) {
     selectedOrgId,
     selectOrg: vi.fn(),
     createOrg: vi.fn(),
+    error: null,
+    retry: vi.fn(),
     isLoading: false,
   });
 }

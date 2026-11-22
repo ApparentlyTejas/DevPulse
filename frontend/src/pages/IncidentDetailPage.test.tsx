@@ -66,6 +66,8 @@ describe("IncidentDetailPage", () => {
       selectedOrgId: "org-1",
       selectOrg: vi.fn(),
       createOrg: vi.fn(),
+      error: null,
+      retry: vi.fn(),
       isLoading: false,
     });
     vi.mocked(listTriages).mockResolvedValue([]);

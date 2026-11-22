@@ -72,6 +72,8 @@ describe("ServiceDetailPage", () => {
       selectedOrgId: "org-1",
       selectOrg: vi.fn(),
       createOrg: vi.fn(),
+      error: null,
+      retry: vi.fn(),
       isLoading: false,
     });
     vi.mocked(listAlertRules).mockResolvedValue([]);
@@ -128,6 +130,44 @@ describe("ServiceDetailPage", () => {
 
     await user.click(screen.getByRole("tab", { name: "Metrics" }));
     expect(await screen.findByText(/no metric snapshots yet/i)).toBeTruthy();
+  });
+
+  test("marks the selected tab active via data-active (not the unsupported data-selected)", async () => {
+    vi.mocked(getService).mockResolvedValue(makeService());
+
+    renderPage();
+
+    const overviewTab = await screen.findByRole("tab", { name: "Overview" });
+    expect(overviewTab.getAttribute("data-active")).not.toBeNull();
+    expect(overviewTab.className).toContain("data-[active]:text-accent-orange");
+
+    const user = userEvent.setup();
+    const alertRulesTab = screen.getByRole("tab", { name: "Alert Rules" });
+    await user.click(alertRulesTab);
+
+    await waitFor(() => expect(alertRulesTab.getAttribute("data-active")).not.toBeNull());
+    expect(overviewTab.getAttribute("data-active")).toBeNull();
+  });
+
+  test("shows a 404 error and refetches when deleting an already-gone service", async () => {
+    vi.mocked(getService).mockResolvedValueOnce(makeService());
+    vi.mocked(deleteService).mockRejectedValue(new ApiError(404, "Service not found"));
+    vi.mocked(getService).mockRejectedValueOnce(new ApiError(404, "Service not found"));
+
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "API" })).toBeTruthy();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /delete/i }));
+
+    // The error handler sets an action error and refetches; the refetch's
+    // 404 then switches the page to its not-found view (which replaces the
+    // action-error paragraph), same as `IncidentDetailPage`'s equivalent --
+    // so the end state to assert is the not-found view, not a surviving
+    // action-error message.
+    await waitFor(() => expect(getService).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(/could not be found/i)).toBeTruthy();
   });
 
   test("deleting the service navigates back to the services list", async () => {
