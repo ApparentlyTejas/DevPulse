@@ -52,6 +52,16 @@ export function ServicesListPage() {
     enabled: selectedOrgId != null,
   });
 
+  // Deleting the only remaining row on page 2+ re-queries the same offset
+  // and gets back `items: []` with `total > 0` -- step back one page so
+  // the next render re-queries a page that actually has rows, instead of
+  // rendering an empty table under a footer claiming a page that doesn't
+  // exist (e.g. "Showing 21-20 of 20"). Same render-time adjustment
+  // pattern as the org-change reset above.
+  if (data && data.items.length === 0 && data.total > 0 && offset > 0) {
+    setOffset((prev) => Math.max(0, prev - PAGE_LIMIT));
+  }
+
   function invalidate() {
     void queryClient.invalidateQueries({ queryKey: ["services", selectedOrgId] });
   }
@@ -88,7 +98,11 @@ export function ServicesListPage() {
         // being seeded correctly.
         status: statusTouched ? values.status : undefined,
       }),
-    onSuccess: () => invalidate(),
+    // `onSettled`, not `onSuccess`: a 404 here means someone else already
+    // deleted this service since the list was fetched, and the dialog's
+    // error display isn't enough on its own -- the row needs to disappear
+    // from the list on Cancel too, same as the delete mutation below.
+    onSettled: () => invalidate(),
   });
 
   const deleteMutation = useMutation({

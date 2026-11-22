@@ -14,8 +14,11 @@ import { ApiError } from "../lib/api/client";
 import { deleteService, getService, updateService } from "../lib/api/services";
 import { useOrg } from "../lib/org-context";
 
+// Base UI's Tabs.Tab sets `data-active` (confirmed against
+// `@base-ui/react/tabs/tab/TabsTabDataAttributes.d.ts`), not `data-selected`
+// -- the selected tab's indicator color is the spec's accent orange.
 const TAB_TRIGGER_CLASSES =
-  "rounded px-3 py-2 text-sm text-ink data-[selected]:bg-surface data-[selected]:text-ink hover:bg-surface";
+  "rounded px-3 py-2 text-sm text-ink data-[active]:text-accent-orange hover:bg-surface";
 
 export function ServiceDetailPage() {
   const { id: serviceId } = useParams<{ id: string }>();
@@ -65,9 +68,15 @@ export function ServiceDetailPage() {
       navigate("/services");
     },
     onError: (err) => {
+      // A 404 here means someone else already deleted this service since
+      // we loaded it; surface the error and refetch so the page reflects
+      // reality (shows the not-found state) instead of continuing to
+      // display a service that no longer exists, same pattern as
+      // `IncidentDetailPage`'s status-update error handling.
       setActionError(
         err instanceof ApiError ? err.detail : "Something went wrong. Please try again.",
       );
+      void refetch();
     },
   });
 

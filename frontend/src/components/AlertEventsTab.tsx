@@ -108,7 +108,7 @@ export function AlertEventsTab({ orgId, serviceId }: AlertEventsTabProps) {
 
       {actionError && <p className="text-sm text-critical">{actionError}</p>}
 
-      {items.length === 0 ? (
+      {total === 0 ? (
         <p className="text-sm text-ink">No alert events yet.</p>
       ) : (
         <>

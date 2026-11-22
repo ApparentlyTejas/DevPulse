@@ -96,6 +96,16 @@ export function IncidentsListPage() {
     enabled: selectedOrgId != null,
   });
 
+  // Deleting the only remaining row on page 2+ re-queries the same offset
+  // and gets back `items: []` with `total > 0` -- step back one page so
+  // the next render re-queries a page that actually has rows, instead of
+  // rendering an empty table under a footer claiming a page that doesn't
+  // exist. Same render-time adjustment pattern as the filter/org-change
+  // reset above.
+  if (data && data.items.length === 0 && data.total > 0 && offset > 0) {
+    setOffset((prev) => Math.max(0, prev - PAGE_LIMIT));
+  }
+
   function invalidate() {
     void queryClient.invalidateQueries({ queryKey: ["incidents", selectedOrgId] });
   }
@@ -118,7 +128,10 @@ export function IncidentsListPage() {
         description: values.description || undefined,
         severity: values.severity,
       }),
-    onSuccess: () => invalidate(),
+    // `onSettled`, not `onSuccess`: a 404 here means someone else already
+    // deleted this incident since the list was fetched, so the list needs
+    // to drop the row on Cancel, not just show the dialog's error.
+    onSettled: () => invalidate(),
   });
 
   const deleteMutation = useMutation({

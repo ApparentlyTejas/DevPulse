@@ -241,7 +241,7 @@ export function MetricsTab({ orgId, serviceId }: MetricsTabProps) {
               Retry
             </button>
           </div>
-        ) : items.length === 0 ? (
+        ) : total === 0 ? (
           <p className="text-sm text-ink">No metric snapshots yet.</p>
         ) : (
           <>

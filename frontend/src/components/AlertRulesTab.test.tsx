@@ -181,4 +181,25 @@ describe("AlertRulesTab", () => {
     await waitFor(() => expect(listAlertRules).toHaveBeenCalledTimes(2));
     expect(await screen.findByText(/no alert rules yet/i)).toBeTruthy();
   });
+
+  test("invalidates the list on a 404 edit (not just on success), so the row drops after Cancel", async () => {
+    vi.mocked(listAlertRules).mockResolvedValueOnce([makeRule()]);
+    vi.mocked(updateAlertRule).mockRejectedValue(new ApiError(404, "Alert rule not found"));
+    vi.mocked(listAlertRules).mockResolvedValueOnce([]);
+
+    renderTab();
+    expect(await screen.findByText("High latency")).toBeTruthy();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    // `onSettled` invalidation fires on this failed submit already, not
+    // only on a later success -- the row doesn't wait for Cancel to drop.
+    await waitFor(() => expect(listAlertRules).toHaveBeenCalledTimes(2));
+
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+
+    expect(await screen.findByText(/no alert rules yet/i)).toBeTruthy();
+  });
 });

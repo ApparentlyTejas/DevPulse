@@ -317,7 +317,10 @@ export function AlertRulesTab({ orgId, serviceId }: AlertRulesTabProps) {
         severity: values.severity,
         is_enabled: values.is_enabled,
       }),
-    onSuccess: () => invalidate(),
+    // `onSettled`, not `onSuccess`: a 404 here means someone else already
+    // deleted this rule since the list was fetched, so the table needs to
+    // drop the row on Cancel, not just show the dialog's error.
+    onSettled: () => invalidate(),
   });
 
   const deleteMutation = useMutation({
